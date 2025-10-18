@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WordPress Website Cloner - {{ title }}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .preview-container {
+            transition: all 0.3s ease;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-hover {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .animate-fade-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .max-h-0 {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .max-h-64 {
+            max-height: 16rem;
+            transition: max-height 0.3s ease-in;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-clone text-3xl"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold">WordPress Website Cloner</h1>
+                        <p class="text-sm opacity-90">Clone any website with all its assets</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs bg-white/20 px-3 py-1 rounded-full">v2.0.0</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Clone Form -->
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8 card-hover">
+                <h2 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-globe text-purple-600 mr-2"></i>
+                    Clone a Website
+                </h2>
+
+                <form id="cloneForm" class="space-y-4">
+                    <div>
+                        <label for="url" class="block text-sm font-medium text-gray-700 mb-2">
+                            Website URL
+                        </label>
+                        <input
+                            type="url"
+                            id="url"
+                            name="url"
+                            placeholder="https://example.com"
+                            required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            id="headless"
+                            name="headless"
+                            checked
+                            class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                        >
+                        <label for="headless" class="text-sm text-gray-700">
+                            Run in headless mode (faster, no browser window)
+                        </label>
+                    </div>
+
+                    <button
+                        type="submit"
+                        id="cloneBtn"
+                        class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                    >
+                        <i class="fas fa-download mr-2"></i>
+                        Start Cloning
+                    </button>
+                </form>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <div class="loading-spinner"></div>
+                            <div class="flex-1">
+                                <p class="font-semibold text-blue-900" id="loadingMessage">Starting clone process...</p>
+                                <div class="w-full bg-blue-200 rounded-full h-2 mt-2">
+                                    <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            id="stopBtn"
+                            onclick="stopCloning()"
+                            class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center space-x-2"
+                        >
+                            <i class="fas fa-stop"></i>
+                            <span>Stop</span>
+                        </button>
+                    </div>
+
+                    <!-- Resource Stats -->
+                    <div class="grid grid-cols-3 gap-4 mb-4">
+                        <div class="bg-white rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-blue-600" id="totalResources">0</div>
+                            <div class="text-xs text-gray-600 mt-1">Total Resources</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-green-600" id="downloadedCount">0</div>
+                            <div class="text-xs text-gray-600 mt-1">Downloaded</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-purple-600" id="elapsedTime">0s</div>
+                            <div class="text-xs text-gray-600 mt-1">Elapsed</div>
+                        </div>
+                    </div>
+
+                    <!-- Resource List -->
+                    <div class="bg-white rounded-lg border border-gray-200">
+                        <div class="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                            <h3 class="font-semibold text-gray-700 text-sm flex items-center">
+                                <i class="fas fa-download text-blue-500 mr-2"></i>
+                                Downloaded Resources
+                            </h3>
+                            <button
+                                onclick="toggleResourceList()"
+                                class="text-gray-500 hover:text-gray-700 text-xs"
+                                id="toggleListBtn"
+                            >
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                        </div>
+                        <div id="resourceListContainer" class="max-h-64 overflow-y-auto">
+                            <div id="resourceList" class="divide-y divide-gray-100">
+                                <!-- Resources will be added here dynamically -->
+                            </div>
+                            <div id="emptyResourceMessage" class="p-8 text-center text-gray-400 text-sm">
+                                <i class="fas fa-hourglass-half text-2xl mb-2"></i>
+                                <p>Waiting for resources...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Success State -->
+                <div id="successState" class="hidden mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-green-900">Clone Completed Successfully!</h3>
+                            <p class="text-sm text-green-700 mt-1" id="successMessage"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div id="errorState" class="hidden mt-6 p-4 bg-red-50 rounded-lg border border-red-200">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-exclamation-circle text-red-600 text-2xl"></i>
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-red-900">Clone Failed</h3>
+                            <p class="text-sm text-red-700 mt-1" id="errorMessage"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            <div id="previewSection" class="hidden fade-in">
+                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-eye text-purple-600 mr-2"></i>
+                            Preview
+                        </h2>
+                        <button
+                            onclick="openInNewTab()"
+                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                        >
+                            <i class="fas fa-external-link-alt mr-2"></i>
+                            Open in New Tab
+                        </button>
+                    </div>
+
+                    <div class="relative bg-gray-100 rounded-lg overflow-hidden" style="height: 600px;">
+                        <iframe
+                            id="previewIframe"
+                            class="w-full h-full border-0"
+                            sandbox="allow-same-origin allow-scripts allow-forms"
+                        ></iframe>
+                    </div>
+
+                    <div class="mt-4 flex items-center justify-between text-sm text-gray-600">
+                        <span id="previewUrl"></span>
+                        <a
+                            href="#"
+                            id="downloadLink"
+                            class="text-purple-600 hover:text-purple-700 font-medium"
+                        >
+                            <i class="fas fa-folder mr-1"></i>
+                            View Files
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project History -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-history text-purple-600 mr-2"></i>
+                        Recent Projects
+                    </h2>
+                    <button
+                        onclick="loadProjects()"
+                        class="text-purple-600 hover:text-purple-700 text-sm font-medium"
+                    >
+                        <i class="fas fa-sync-alt mr-1"></i>
+                        Refresh
+                    </button>
+                </div>
+
+                <div id="projectsList" class="space-y-3">
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-folder-open text-4xl mb-2"></i>
+                        <p>No projects yet. Clone a website to get started!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-12">
+        <div class="container mx-auto px-4 py-6 text-center text-gray-600 text-sm">
+            <p>WordPress Website Cloner v2.0 | Built with FastAPI, Selenium & Python</p>
+            <p class="mt-1">
+                <i class="fas fa-info-circle mr-1"></i>
+                For educational purposes. Respect website terms of service.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        let currentPreviewUrl = '';
+        let eventSource = null;
+        let currentJobId = null;
+        let downloadedResources = new Set();
+        let totalResourcesCount = 0;
+        let startTime = null;
+        let timerInterval = null;
+
+        // Clone form submission
+        document.getElementById('cloneForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const url = document.getElementById('url').value;
+            const headless = document.getElementById('headless').checked;
+
+            // Reset states
+            downloadedResources.clear();
+            totalResourcesCount = 0;
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('successState').classList.add('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('previewSection').classList.add('hidden');
+            document.getElementById('resourceList').innerHTML = '';
+            document.getElementById('emptyResourceMessage').classList.remove('hidden');
+            document.getElementById('totalResources').textContent = '0';
+            document.getElementById('downloadedCount').textContent = '0';
+            document.getElementById('elapsedTime').textContent = '0s';
+            document.getElementById('cloneBtn').disabled = true;
+
+            // Calculate job ID (base64 encoded URL)
+            currentJobId = btoa(url).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+            // Start timer
+            startTime = Date.now();
+            startTimer();
+
+            // Start listening to logs via SSE
+            startLogStream(currentJobId);
+
+            try {
+                const response = await fetch('/api/clone', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url, headless })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Show success
+                    stopTimer();
+                    document.getElementById('loadingState').classList.add('hidden');
+                    document.getElementById('successState').classList.remove('hidden');
+                    document.getElementById('successMessage').textContent = `Cloned: ${url}`;
+
+                    // Show preview
+                    showPreview(data.preview_url, url);
+
+                    // Reload projects list
+                    loadProjects();
+                } else {
+                    throw new Error(data.detail || 'Clone failed');
+                }
+            } catch (error) {
+                stopTimer();
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('errorState').classList.remove('hidden');
+                document.getElementById('errorMessage').textContent = error.message;
+                stopLogStream();
+            } finally {
+                document.getElementById('cloneBtn').disabled = false;
+            }
+        });
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('elapsedTime').textContent = `${elapsed}s`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        async function stopCloning() {
+            if (!currentJobId) return;
+
+            try {
+                const response = await fetch(`/api/cancel/${currentJobId}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    stopTimer();
+                    stopLogStream();
+                    document.getElementById('loadingState').classList.add('hidden');
+                    document.getElementById('errorState').classList.remove('hidden');
+                    document.getElementById('errorMessage').textContent = 'Clone cancelled by user';
+                    document.getElementById('cloneBtn').disabled = false;
+                }
+            } catch (error) {
+                console.error('Error cancelling clone:', error);
+            }
+        }
+
+        function startLogStream(jobId) {
+            stopLogStream(); // Close any existing connection
+
+            console.log('[FRONTEND] Starting SSE stream for job:', jobId);
+            eventSource = new EventSource(`/api/logs/${jobId}`);
+
+            eventSource.onopen = () => {
+                console.log('[FRONTEND] SSE connection opened');
+            };
+
+            eventSource.onmessage = (event) => {
+                console.log('[FRONTEND] Received SSE message:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('[FRONTEND] Parsed data:', data);
+
+                    if (data.type === 'log') {
+                        parseAndDisplayResource(data.message);
+                    } else if (data.type === 'status') {
+                        console.log('[FRONTEND] Received status:', data.status);
+                        if (data.status === 'completed' || data.status === 'error') {
+                            stopLogStream();
+                            stopTimer();
+                        }
+                    }
+                } catch (e) {
+                    console.error('[FRONTEND] Error parsing log message:', e, event.data);
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('[FRONTEND] EventSource error:', error);
+                console.error('[FRONTEND] EventSource readyState:', eventSource.readyState);
+                stopLogStream();
+            };
+        }
+
+        function stopLogStream() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+        }
+
+        function parseAndDisplayResource(message) {
+            // Parse log messages for downloaded resources
+            // Look for patterns like "Downloaded: https://..." or "Saved index.html"
+
+            // Check for total resources count: "Found X network requests"
+            const totalMatch = message.match(/Found\s+(\d+)\s+network\s+requests/i);
+            if (totalMatch) {
+                totalResourcesCount = parseInt(totalMatch[1]);
+                document.getElementById('totalResources').textContent = totalResourcesCount;
+                document.getElementById('progressBar').style.width = '20%';
+            }
+
+            // Extract resource info from different log patterns
+            let resource = '';
+            let icon = 'fa-file';
+            let color = 'text-blue-500';
+
+            // Pattern 1: "Downloaded: URL -> path"
+            const downloadMatch = message.match(/Downloaded:\s*(.+?)\s*->\s*(.+?)$/);
+            if (downloadMatch) {
+                resource = downloadMatch[1].trim();
+            }
+            // Pattern 2: "Downloaded via requests: URL"
+            else if (message.match(/Downloaded\s+via\s+requests:\s*(.+)$/i)) {
+                const match = message.match(/Downloaded\s+via\s+requests:\s*(.+)$/i);
+                if (match) resource = match[1].trim();
+            }
+            // Pattern 3: "Downloaded via urllib3: URL"
+            else if (message.match(/Downloaded\s+via\s+urllib3:\s*(.+)$/i)) {
+                const match = message.match(/Downloaded\s+via\s+urllib3:\s*(.+)$/i);
+                if (match) resource = match[1].trim();
+            }
+            // Pattern 4: "Saved index.html"
+            else if (message.includes('Saved index.html')) {
+                resource = 'index.html';
+            }
+            // Pattern 5: "Downloaded favicon: URL"
+            else if (message.match(/Downloaded\s+favicon:\s*(.+)$/i)) {
+                const match = message.match(/Downloaded\s+favicon:\s*(.+)$/i);
+                if (match) resource = match[1].trim();
+            }
+
+            // Determine file type and icon
+            if (resource) {
+                if (resource.match(/\.(jpg|jpeg|png|gif|webp|svg|ico)$/i)) {
+                    icon = 'fa-image';
+                    color = 'text-green-500';
+                } else if (resource.match(/\.(css)$/i)) {
+                    icon = 'fa-file-code';
+                    color = 'text-purple-500';
+                } else if (resource.match(/\.(js)$/i)) {
+                    icon = 'fa-file-code';
+                    color = 'text-yellow-500';
+                } else if (resource.match(/\.(woff|woff2|ttf|eot)$/i)) {
+                    icon = 'fa-font';
+                    color = 'text-gray-500';
+                } else if (resource.match(/\.html?$/i)) {
+                    icon = 'fa-file-code';
+                    color = 'text-blue-500';
+                } else if (resource.match(/\.json$/i)) {
+                    icon = 'fa-file-code';
+                    color = 'text-orange-500';
+                }
+
+                // Add to list if new
+                if (!downloadedResources.has(resource)) {
+                    downloadedResources.add(resource);
+                    addResourceToList(resource, icon, color);
+                    updateStats();
+                }
+            }
+
+            // Update progress message for all messages
+            const shortMessage = message.substring(0, 80);
+            document.getElementById('loadingMessage').textContent = shortMessage;
+
+            // Update progress bar based on certain keywords
+            if (message.includes('Processing CSS') || message.includes('CSS files')) {
+                document.getElementById('progressBar').style.width = '60%';
+            } else if (message.includes('Saved index.html')) {
+                document.getElementById('progressBar').style.width = '40%';
+            } else if (message.includes('Starting')) {
+                document.getElementById('progressBar').style.width = '10%';
+            }
+        }
+
+        function addResourceToList(resource, icon, color) {
+            // Hide empty message
+            document.getElementById('emptyResourceMessage').classList.add('hidden');
+
+            const resourceList = document.getElementById('resourceList');
+            const item = document.createElement('div');
+            item.className = 'p-3 hover:bg-gray-50 transition-colors animate-fade-in';
+
+            // Truncate long URLs
+            const displayName = resource.length > 60 ? resource.substring(0, 57) + '...' : resource;
+
+            item.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <i class="fas ${icon} ${color}"></i>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-gray-700 truncate" title="${resource}">${displayName}</p>
+                    </div>
+                    <i class="fas fa-check text-green-500 text-xs"></i>
+                </div>
+            `;
+
+            // Add to top of list
+            resourceList.insertBefore(item, resourceList.firstChild);
+
+            // Auto-scroll
+            const container = document.getElementById('resourceListContainer');
+            if (container.scrollTop === 0) {
+                container.scrollTop = 0;
+            }
+        }
+
+        function updateStats() {
+            const count = downloadedResources.size;
+            document.getElementById('downloadedCount').textContent = count;
+
+            // Update progress bar based on progress
+            if (totalResourcesCount > 0) {
+                const percentage = Math.min(95, Math.floor((count / totalResourcesCount) * 100));
+                document.getElementById('progressBar').style.width = `${percentage}%`;
+            }
+        }
+
+        function toggleResourceList() {
+            const container = document.getElementById('resourceListContainer');
+            const btn = document.getElementById('toggleListBtn');
+
+            if (container.classList.contains('max-h-64')) {
+                container.classList.remove('max-h-64');
+                container.classList.add('max-h-0');
+                btn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+            } else {
+                container.classList.remove('max-h-0');
+                container.classList.add('max-h-64');
+                btn.innerHTML = '<i class="fas fa-chevron-up"></i>';
+            }
+        }
+
+        function showPreview(previewUrl, originalUrl) {
+            currentPreviewUrl = previewUrl;
+            const previewSection = document.getElementById('previewSection');
+            const iframe = document.getElementById('previewIframe');
+            const urlDisplay = document.getElementById('previewUrl');
+            const downloadLink = document.getElementById('downloadLink');
+
+            iframe.src = previewUrl;
+            urlDisplay.textContent = `Original: ${originalUrl}`;
+
+            // Extract project name from preview URL
+            // Format: /cloned/{project_name}/index.html
+            const projectMatch = previewUrl.match(/\/cloned\/([^\/]+)\//);
+            if (projectMatch) {
+                const projectName = projectMatch[1];
+                downloadLink.href = `/browse/${projectName}`;
+            }
+
+            previewSection.classList.remove('hidden');
+            previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function openInNewTab() {
+            if (currentPreviewUrl) {
+                window.open(currentPreviewUrl, '_blank');
+            }
+        }
+
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const data = await response.json();
+
+                const projectsList = document.getElementById('projectsList');
+
+                if (data.projects.length === 0) {
+                    projectsList.innerHTML = `
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-folder-open text-4xl mb-2"></i>
+                            <p>No projects yet. Clone a website to get started!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                projectsList.innerHTML = data.projects.map(project => `
+                    <div class="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h3 class="font-medium text-gray-900 mb-1">${escapeHtml(project.url)}</h3>
+                                <p class="text-xs text-gray-500">${new Date(project.created * 1000).toLocaleString()}</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button
+                                    onclick="showPreview('${project.preview_url}', '${escapeHtml(project.url)}')"
+                                    class="px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 text-sm"
+                                >
+                                    <i class="fas fa-eye mr-1"></i>
+                                    View
+                                </button>
+                                <a
+                                    href="/browse/${project.name}"
+                                    target="_blank"
+                                    class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm inline-block"
+                                >
+                                    <i class="fas fa-folder mr-1"></i>
+                                    Files
+                                </a>
+                                <button
+                                    onclick="deleteProject('${project.name}', '${escapeHtml(project.url)}')"
+                                    class="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
+                                >
+                                    <i class="fas fa-trash mr-1"></i>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Failed to load projects:', error);
+            }
+        }
+
+        async function deleteProject(projectName, url) {
+            if (!confirm(`Delete clone of ${url}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/projects/${projectName}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadProjects();
+                } else {
+                    alert('Failed to delete project');
+                }
+            } catch (error) {
+                alert('Error deleting project: ' + error.message);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load projects on page load
+        loadProjects();
+    </script>
+</body>
+</html>

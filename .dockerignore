@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Project output
+project/
+test_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+debug.log
+ghostdriver.log
+webui.log
+clone_test.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test directories
+Test Work/
+basic-flask-app-master/
+selenium1/
+
+# Old files
+*.old
+
+# Documentation (not needed in container)
+*.md
+ARCHITECTURE.md
+CHANGELOG.md
+MIGRATION_GUIDE.md
+README.md
+SUMMARY.md
+WEB_UI_GUIDE.md
+QUICKSTART.md
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+run_docker.sh
+
+# Chrome driver (will be auto-downloaded)
+chromedriver.exe
+chromedriver
+*.exe

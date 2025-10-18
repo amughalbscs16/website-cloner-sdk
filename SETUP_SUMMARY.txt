@@ -1,0 +1,53 @@
+WordPress Website Cloner v2.0 - Setup Summary
+===============================================
+
+DOCKER SETUP (RECOMMENDED):
+---------------------------
+1. Install Docker Desktop
+2. Run: ./run_docker.sh (Linux/Mac) or bash run_docker.sh (Windows)
+3. Access: http://localhost:8000
+
+MANUAL SETUP:
+-------------
+1. Install Python 3.10+
+2. pip install -r requirements.txt
+3. python run_webui.py
+4. Access: http://localhost:8000
+
+FILES CREATED:
+--------------
+✓ Dockerfile - Container image definition
+✓ run_docker.sh - Docker launch script
+✓ .dockerignore - Docker build optimization
+✓ .gitignore - Updated with .md and .claude exclusions
+✓ .gitattributes - Git line ending configuration
+
+GIT CONFIGURATION:
+------------------
+✓ All .md files ignored (except README.md)
+✓ .claude/ directory ignored
+✓ *.claude files ignored
+✓ Commit template configured (no attribution)
+
+DOCKER COMMANDS:
+----------------
+Build & Run:  ./run_docker.sh
+View Logs:    docker logs -f wordpress-cloner-app
+Stop:         docker stop wordpress-cloner-app
+Restart:      docker restart wordpress-cloner-app
+
+WEB UI ACCESS:
+--------------
+URL: http://localhost:8000
+Health: http://localhost:8000/health
+
+FEATURES:
+---------
+✓ Auto ChromeDriver download
+✓ Beautiful web interface
+✓ Live preview in iframe
+✓ Project history management
+✓ CLI support
+✓ Docker containerization
+
+For detailed documentation, see README.md

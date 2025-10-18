@@ -1,0 +1,22 @@
+# Commit Message Template
+#
+# Format:
+# <type>: <subject>
+#
+# <body>
+#
+# Types:
+# feat: A new feature
+# fix: A bug fix
+# docs: Documentation changes
+# style: Code style changes (formatting, etc)
+# refactor: Code refactoring
+# test: Adding or updating tests
+# chore: Maintenance tasks
+#
+# Example:
+# feat: Add Docker support
+#
+# - Create Dockerfile with Chrome and Python
+# - Add run_docker.sh script for easy deployment
+# - Include .dockerignore for optimized builds

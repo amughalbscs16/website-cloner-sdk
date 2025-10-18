@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Browser - {{ project_name }}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .file-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        .breadcrumb-item:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-folder-open text-2xl"></i>
+                    <div>
+                        <h1 class="text-xl font-bold">File Browser</h1>
+                        <p class="text-sm opacity-90">{{ project_name }}</p>
+                    </div>
+                </div>
+                <a href="/" class="text-white hover:text-gray-200 text-sm">
+                    <i class="fas fa-home mr-1"></i>
+                    Back to Home
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Download Manifest Summary -->
+        <div id="manifestSummary" class="hidden bg-white rounded-lg shadow-md mb-6 overflow-hidden">
+            <div class="p-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+                <h2 class="text-lg font-semibold flex items-center">
+                    <i class="fas fa-chart-bar mr-2"></i>
+                    Download Report
+                </h2>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="text-center p-4 bg-green-50 rounded-lg">
+                        <div class="text-3xl font-bold text-green-600" id="successCount">0</div>
+                        <div class="text-sm text-gray-600 mt-1">Successful</div>
+                    </div>
+                    <div class="text-center p-4 bg-red-50 rounded-lg">
+                        <div class="text-3xl font-bold text-red-600" id="failedCount">0</div>
+                        <div class="text-sm text-gray-600 mt-1">Failed</div>
+                    </div>
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <div class="text-3xl font-bold text-blue-600" id="skippedCount">0</div>
+                        <div class="text-sm text-gray-600 mt-1">Skipped</div>
+                    </div>
+                </div>
+
+                <!-- Failed Downloads List -->
+                <div id="failedDownloads" class="hidden">
+                    <button onclick="toggleFailedList()" class="w-full flex items-center justify-between p-3 bg-red-50 hover:bg-red-100 rounded-lg transition">
+                        <span class="font-semibold text-red-700">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            View Failed Downloads (<span id="failedListCount">0</span>)
+                        </span>
+                        <i id="failedToggleIcon" class="fas fa-chevron-down text-red-700"></i>
+                    </button>
+                    <div id="failedList" class="hidden mt-2 max-h-96 overflow-y-auto border border-red-200 rounded-lg">
+                        <!-- Failed downloads will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md">
+            <!-- Breadcrumb -->
+            <div class="p-4 border-b border-gray-200 flex items-center space-x-2 text-sm">
+                <i class="fas fa-home text-gray-500"></i>
+                <span id="breadcrumb" class="flex items-center space-x-2"></span>
+            </div>
+
+            <!-- File List -->
+            <div id="fileList" class="divide-y divide-gray-100">
+                <div class="p-8 text-center text-gray-400">
+                    <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
+                    <p>Loading files...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const projectName = "{{ project_name }}";
+        let currentPath = "";
+        let manifestData = null;
+
+        // Load manifest on page load
+        async function loadManifest() {
+            try {
+                const response = await fetch(`/api/manifest/${projectName}`);
+                const data = await response.json();
+
+                if (data.exists && data.manifest) {
+                    manifestData = data.manifest;
+                    displayManifest(manifestData);
+                }
+            } catch (error) {
+                console.error('Error loading manifest:', error);
+            }
+        }
+
+        function displayManifest(manifest) {
+            const stats = manifest.statistics;
+
+            // Show manifest summary
+            document.getElementById('manifestSummary').classList.remove('hidden');
+
+            // Update statistics
+            document.getElementById('successCount').textContent = stats.success || 0;
+            document.getElementById('failedCount').textContent = stats.failed || 0;
+            document.getElementById('skippedCount').textContent = stats.skipped || 0;
+
+            // Display failed downloads if any
+            if (manifest.failed_downloads && manifest.failed_downloads.length > 0) {
+                document.getElementById('failedDownloads').classList.remove('hidden');
+                document.getElementById('failedListCount').textContent = manifest.failed_downloads.length;
+
+                let failedHtml = '';
+                for (const failed of manifest.failed_downloads) {
+                    const shortUrl = failed.url.length > 80 ? failed.url.substring(0, 80) + '...' : failed.url;
+                    failedHtml += `
+                        <div class="p-3 border-b border-red-100 last:border-b-0">
+                            <div class="flex items-start space-x-2">
+                                <i class="fas fa-times-circle text-red-500 mt-1"></i>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm text-gray-700 break-all">${shortUrl}</p>
+                                    <p class="text-xs text-red-600 mt-1">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        ${failed.reason}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                document.getElementById('failedList').innerHTML = failedHtml;
+            }
+        }
+
+        function toggleFailedList() {
+            const failedList = document.getElementById('failedList');
+            const toggleIcon = document.getElementById('failedToggleIcon');
+
+            if (failedList.classList.contains('hidden')) {
+                failedList.classList.remove('hidden');
+                toggleIcon.classList.remove('fa-chevron-down');
+                toggleIcon.classList.add('fa-chevron-up');
+            } else {
+                failedList.classList.add('hidden');
+                toggleIcon.classList.remove('fa-chevron-up');
+                toggleIcon.classList.add('fa-chevron-down');
+            }
+        }
+
+        async function loadFiles(path = "") {
+            currentPath = path;
+
+            try {
+                const response = await fetch(`/api/files/${projectName}?path=${encodeURIComponent(path)}`);
+                const data = await response.json();
+
+                displayBreadcrumb(path);
+                displayFiles(data.items);
+            } catch (error) {
+                console.error('Error loading files:', error);
+                document.getElementById('fileList').innerHTML = `
+                    <div class="p-8 text-center text-red-500">
+                        <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+                        <p>Error loading files: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayBreadcrumb(path) {
+            const breadcrumb = document.getElementById('breadcrumb');
+            const parts = path ? path.split('/').filter(p => p) : [];
+
+            let html = `
+                <a href="#" onclick="loadFiles(''); return false;" class="text-purple-600 hover:text-purple-700 breadcrumb-item">
+                    ${projectName}
+                </a>
+            `;
+
+            let accumulated = '';
+            for (const part of parts) {
+                accumulated += (accumulated ? '/' : '') + part;
+                const pathToUse = accumulated;
+                html += `
+                    <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+                    <a href="#" onclick="loadFiles('${pathToUse}'); return false;" class="text-purple-600 hover:text-purple-700 breadcrumb-item">
+                        ${part}
+                    </a>
+                `;
+            }
+
+            breadcrumb.innerHTML = html;
+        }
+
+        function displayFiles(items) {
+            const fileList = document.getElementById('fileList');
+
+            if (items.length === 0) {
+                fileList.innerHTML = `
+                    <div class="p-8 text-center text-gray-400">
+                        <i class="fas fa-folder-open text-3xl mb-2"></i>
+                        <p>This folder is empty</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Separate directories and files
+            const dirs = items.filter(item => item.is_dir);
+            const files = items.filter(item => !item.is_dir);
+
+            let html = '';
+
+            // Add parent directory link if not at root
+            if (currentPath) {
+                const parentPath = currentPath.split('/').slice(0, -1).join('/');
+                html += `
+                    <div class="p-4 flex items-center space-x-3 cursor-pointer file-item" onclick="loadFiles('${parentPath}')">
+                        <i class="fas fa-level-up-alt text-gray-400 w-8"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-700">..</p>
+                            <p class="text-xs text-gray-400">Parent directory</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Display directories
+            for (const dir of dirs) {
+                html += `
+                    <div class="p-4 flex items-center space-x-3 cursor-pointer file-item" onclick="loadFiles('${dir.path}')">
+                        <i class="fas fa-folder text-yellow-500 text-xl w-8"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-700">${dir.name}</p>
+                            <p class="text-xs text-gray-400">Folder</p>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-300"></i>
+                    </div>
+                `;
+            }
+
+            // Display files
+            for (const file of files) {
+                const icon = getFileIcon(file.name);
+                const size = formatFileSize(file.size);
+                const url = `/cloned/${projectName}/${file.path}`;
+
+                html += `
+                    <div class="p-4 flex items-center space-x-3 file-item">
+                        <i class="${icon.class} ${icon.color} text-xl w-8"></i>
+                        <div class="flex-1 min-w-0">
+                            <a href="${url}" target="_blank" class="font-medium text-gray-700 hover:text-purple-600 block truncate">
+                                ${file.name}
+                            </a>
+                            <p class="text-xs text-gray-400">${size}</p>
+                        </div>
+                        <a href="${url}" download class="text-purple-600 hover:text-purple-700 px-3">
+                            <i class="fas fa-download"></i>
+                        </a>
+                    </div>
+                `;
+            }
+
+            fileList.innerHTML = html;
+        }
+
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+
+            const icons = {
+                'html': { class: 'fas fa-file-code', color: 'text-blue-500' },
+                'css': { class: 'fas fa-file-code', color: 'text-purple-500' },
+                'js': { class: 'fas fa-file-code', color: 'text-yellow-500' },
+                'json': { class: 'fas fa-file-code', color: 'text-orange-500' },
+                'jpg': { class: 'fas fa-image', color: 'text-green-500' },
+                'jpeg': { class: 'fas fa-image', color: 'text-green-500' },
+                'png': { class: 'fas fa-image', color: 'text-green-500' },
+                'gif': { class: 'fas fa-image', color: 'text-green-500' },
+                'webp': { class: 'fas fa-image', color: 'text-green-500' },
+                'svg': { class: 'fas fa-image', color: 'text-green-500' },
+                'woff': { class: 'fas fa-font', color: 'text-gray-500' },
+                'woff2': { class: 'fas fa-font', color: 'text-gray-500' },
+                'ttf': { class: 'fas fa-font', color: 'text-gray-500' },
+                'eot': { class: 'fas fa-font', color: 'text-gray-500' },
+                'pdf': { class: 'fas fa-file-pdf', color: 'text-red-500' },
+                'zip': { class: 'fas fa-file-archive', color: 'text-gray-600' },
+            };
+
+            return icons[ext] || { class: 'fas fa-file', color: 'text-gray-400' };
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Load manifest and files on page load
+        loadManifest();
+        loadFiles();
+    </script>
+</body>
+</html>

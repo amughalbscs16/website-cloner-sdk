@@ -1,8 +1,80 @@
-#project output
+# Project output
 project/
 
-#pycache
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# macOS Files
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.claude/
+*.claude
+
+# OS Files
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log
+debug.log
+ghostdriver.log
+
+# ChromeDriver (auto-downloaded by webdriver-manager)
+chromedriver.exe
+chromedriver
+*.exe
+
+# Selenium profiles
+selenium1/
+selenium*/
+
+# Environment variables
+.env
+
+# Old code (backup)
+AppMain.py.old
+Main.py.old
+Downloader.py.old
+DownloadAssetsofCSS.py.old
+chromeDriver.py.old
+testURLLIB.py.old
+
+# Test directories
+Test Work/
+basic-flask-app-master/
+
+# Plans folder (development notes and planning)
+plans/
+
+# Documentation (keep only essential ones in repo)
+*.md
+!README.md
+!LICENSE.md
