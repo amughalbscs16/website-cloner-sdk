@@ -1,28 +1,90 @@
 # WordPress Website Cloner v2.0
 
-A modern, professional-grade website cloner built with Python, Selenium 4.x, and Beautiful Soup. Clone any website locally with all its assets including HTML, CSS, JavaScript, images, and fonts.
+> **A professional Python library for cloning websites with all assets (HTML, CSS, JavaScript, images, fonts) - complete with a beautiful Web UI demo**
+
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+---
+
+## 🎯 Two Ways to Use This Project
+
+This project serves **two distinct purposes**:
+
+### 1. 🌐 **Web UI Application** (Demonstration & Testing)
+A beautiful, user-friendly web interface for cloning websites - perfect for:
+- Testing the cloning functionality
+- One-off website backups
+- Non-technical users who need a visual interface
+- Demonstrating capabilities to clients
+
+👉 **Start the Web UI**: `python run_webui.py` → Open http://localhost:8000
+
+---
+
+### 2. 🐍 **Python Library/SDK** (Embed in Your Applications)
+A powerful Python library you can integrate into your own applications - perfect for:
+- Building SaaS products (website backup services)
+- Automating website archival workflows
+- Creating monitoring/comparison tools
+- Embedding cloning functionality in existing projects
+
+👉 **Use as Library**:
+```python
+from src import ClonerSDK
+
+cloner = ClonerSDK()
+
+@cloner.on_progress
+def track_progress(data):
+    print(f"{data.percentage}% - {data.message}")
+
+output = cloner.clone("https://example.com")
+```
+
+---
 
 ## 📸 Screenshots
 
-![WordPress Website Cloner Web UI](images/cloned_wandererguru.com_mainpage.png)
-*Beautiful Web UI with live preview of cloned websites*
+![WordPress Website Cloner Web UI](images/webui_screenshot.png)
+*Beautiful Web UI with real-time progress tracking and file type analytics*
+
+---
 
 ## ✨ Features
 
-- **🚀 Modern Stack**: Built with latest Selenium 4.x, Python 3.10+ type hints, and modern async patterns
-- **🤖 Auto ChromeDriver**: Automatically downloads and manages ChromeDriver - no manual setup needed!
-- **📦 Complete Asset Download**: Downloads HTML, CSS, JS, images, fonts, and all referenced resources
-- **🎨 CSS Asset Extraction**: Intelligently extracts and downloads assets from `url()` declarations in CSS
-- **🔍 Network Monitoring**: Uses browser DevTools to capture dynamically loaded resources
-- **🌐 Flask API**: RESTful API for programmatic website cloning
-- **📝 Professional Logging**: Beautiful, structured logging with Loguru
-- **⚙️ Configurable**: Environment-based configuration with sensible defaults
-- **🏗️ Clean Architecture**: Modular, testable code with separation of concerns
+### Core Functionality
+- ✅ **JavaScript Execution**: Handles modern SPAs (React, Vue, Angular) using Selenium
+- ✅ **Complete Asset Download**: HTML, CSS, JavaScript, images, fonts, and all resources
+- ✅ **Network Monitoring**: Captures dynamically-loaded assets via Chrome DevTools
+- ✅ **Smart CSS Processing**: Extracts and downloads assets from `url()` declarations
+- ✅ **Auto ChromeDriver**: Automatically downloads and manages ChromeDriver - zero manual setup
+
+### For Library Users (Developers)
+- 🐍 **Event-Driven SDK**: Subscribe to 14+ events for real-time updates
+- 📊 **File Type Analytics**: Track downloads by category (images, CSS, JS, fonts, etc.)
+- 🎯 **Decorator API**: Clean, Pythonic event handling with decorators
+- 📦 **Pip Installable**: One-command installation
+- 🔄 **Progress Callbacks**: Real-time percentage, stage, and message updates
+- 💾 **Download Statistics**: Success/failure tracking per file type
+
+### For Web UI Users
+- 🎨 **Beautiful Interface**: Modern, clean design with real-time updates
+- 👁️ **Live Preview**: View cloned websites in iframe
+- 📚 **Project History**: Manage multiple cloned projects
+- 📊 **Visual Analytics**: File type breakdown with progress bars
+- ⚠️ **Failed Downloads**: Clear list of files that couldn't be downloaded
+- ⏱️ **Real-Time Progress**: Watch cloning happen live
+
+---
 
 ## 📋 Requirements
 
-- Python 3.10+
-- Google Chrome browser (latest stable version)
+- **Python 3.10+**
+- **Google Chrome** (latest stable version)
+- **Internet connection** (for initial ChromeDriver download)
+
+---
 
 ## 🚀 Quick Start
 
@@ -35,122 +97,359 @@ cd Wordpress-Detailed-Clone-Selenium-Python-Requests
 
 # Create virtual environment (recommended)
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### 🌐 Web UI (Recommended for Beginners)
+---
 
-The easiest way to use the cloner is through the beautiful web interface:
+## 🌐 Option 1: Web UI (Demo Application)
+
+The easiest way to test the cloner is through the web interface:
 
 ```bash
 # Start the Web UI
 python run_webui.py
 
-# Then open in browser: http://localhost:8000
+# Open in browser
+http://localhost:8000
 ```
 
-**Features:**
-- 🎨 Beautiful, modern interface
-- 👁️ Live preview in iframe
-- 📚 Project history management
-- ⚡ Real-time progress tracking
+**Web UI Features:**
+- Clone websites by entering URL
+- Real-time progress tracking with percentage
+- File type breakdown (images, CSS, JS, fonts, etc.)
+- Failed downloads list
+- Live preview of cloned site
+- Project history management
 
-See [WEB_UI_GUIDE.md](WEB_UI_GUIDE.md) for detailed Web UI documentation.
+**Perfect for:**
+- Quick website backups
+- Testing cloning functionality
+- Demonstrating to non-technical users
+- One-off archival tasks
+
+---
+
+## 🐍 Option 2: Python Library (For Developers)
+
+Embed the cloner in your own applications with full programmatic control.
+
+### Simple Example
+
+```python
+from src import clone_website
+
+# Clone a website (one line!)
+output_path = clone_website("https://example.com")
+print(f"Cloned to: {output_path}")
+```
+
+### With Progress Tracking
+
+```python
+from src import ClonerSDK
+
+cloner = ClonerSDK(headless=True)
+
+@cloner.on_progress
+def handle_progress(data):
+    print(f"[{data.percentage:5.1f}%] {data.message}")
+
+@cloner.on_complete
+def handle_complete(data):
+    print(f"✅ Success! Downloaded {data.successful_downloads} files in {data.duration_seconds:.2f}s")
+
+@cloner.on_resource_downloaded
+def handle_download(data):
+    print(f"  ✓ {data.url}")
+
+output_path = cloner.clone("https://example.com")
+```
+
+### Event-Driven Architecture
+
+The SDK emits **14+ events** covering the entire cloning lifecycle:
+
+**Lifecycle Events:**
+- `CLONE_START` - Cloning begins
+- `CLONE_COMPLETE` - Cloning finished successfully
+- `CLONE_ERROR` - Error occurred
+
+**Progress Events:**
+- `PROGRESS_UPDATE` - General progress (percentage, stage, message)
+- `PAGE_LOADED` - Page loaded in browser
+- `NETWORK_LOGS_EXTRACTED` - Network requests captured
+- `HTML_PROCESSING_START` / `COMPLETE` - HTML processing stage
+- `CSS_PROCESSING_START` / `COMPLETE` - CSS processing stage
+
+**Download Events:**
+- `RESOURCE_DISCOVERED` - New resource found
+- `RESOURCE_DOWNLOAD_SUCCESS` - Resource downloaded
+- `RESOURCE_DOWNLOAD_FAILED` - Download failed
+- `STATS_UPDATE` - Statistics updated
+
+### Real-World Integration Example
+
+```python
+from src import ClonerSDK
+import requests  # For webhooks
+import sqlite3  # For database
+
+# Your application code
+cloner = ClonerSDK()
+
+@cloner.on_complete
+def notify_and_save(data):
+    # Send webhook notification
+    requests.post("https://yourapp.com/webhook", json={
+        "event": "clone_complete",
+        "url": data.url,
+        "duration": data.duration_seconds,
+        "downloads": data.successful_downloads
+    })
+
+    # Save to database
+    db = sqlite3.connect("clones.db")
+    db.execute(
+        "INSERT INTO clones (url, output_path, duration) VALUES (?, ?, ?)",
+        (data.url, data.output_path, data.duration_seconds)
+    )
+    db.commit()
+
+# Clone as part of your workflow
+cloner.clone("https://example.com")
+```
+
+**Perfect for:**
+- Building SaaS products
+- Automating backups
+- CI/CD pipelines
+- Monitoring systems
+- Custom workflows
+
+---
+
+## 📚 Library Documentation
 
 ### Basic Usage
 
-**Command Line:**
+```python
+from src import clone_website
 
-```bash
-# Clone a website
-python -m src.main https://example.com
-
-# Run with visible browser (not headless)
-python -m src.main https://example.com --visible
-
-# Custom output directory
-python -m src.main https://example.com --output ./my-clones
-
-# Enable debug logging
-python -m src.main https://example.com --debug
+# Simple one-liner
+output = clone_website("https://example.com")
 ```
 
-**As Python Module:**
+### SDK Class
 
 ```python
-from src.cloner import clone_website
+from src import ClonerSDK, ClonerEvents
 
-# Clone a website
-output_path = clone_website("https://example.com")
-print(f"Website cloned to: {output_path}")
+cloner = ClonerSDK(headless=True)
 
-# With custom settings
-output_path = clone_website(
-    "https://example.com",
-    headless=False  # Show browser
-)
+# Subscribe to events
+@cloner.on_start
+def on_start(data):
+    print(f"Starting: {data.url}")
+
+@cloner.on_progress
+def on_progress(data):
+    print(f"{data.percentage}% - {data.stage}")
+
+@cloner.on_complete
+def on_complete(data):
+    print(f"Done! Output: {data.output_path}")
+    print(f"Stats: {data.successful_downloads}/{data.total_resources}")
+
+# Clone website
+output = cloner.clone("https://example.com")
 ```
 
-**Flask API:**
+### Available Events
 
-```bash
-# Start the API server
-python -m src.app
+| Event | Data Class | Description |
+|-------|------------|-------------|
+| `CLONE_START` | `CloneStartData` | url, headless |
+| `CLONE_COMPLETE` | `CloneCompleteData` | url, output_path, duration_seconds, stats |
+| `CLONE_ERROR` | `CloneErrorData` | url, error, traceback |
+| `PROGRESS_UPDATE` | `ProgressData` | stage, message, percentage |
+| `RESOURCE_DOWNLOAD_SUCCESS` | `ResourceData` | url, file_path, file_type |
+| `RESOURCE_DOWNLOAD_FAILED` | `ResourceData` | url, error |
+| `STATS_UPDATE` | `StatsData` | total, success, failed, skipped |
 
-# Or use the convenience function
-python -c "from src.app import run_server; run_server()"
+### Configuration
+
+```python
+# Via environment variables (.env file)
+HEADLESS=true
+BROWSER_TIMEOUT=30
+PAGE_LOAD_WAIT=5
+REQUEST_TIMEOUT=7
+MAX_WORKERS=10  # Parallel downloads
+
+# Via code
+from src.config import config
+config.HEADLESS = False  # Show browser
+config.MAX_WORKERS = 20  # More parallel downloads
 ```
 
-API Endpoints:
-- `GET /` - API information
-- `GET /health` - Health check
-- `GET /clone?url=<url>` - Clone website from URL
-- `POST /clone` - Clone website (JSON body: `{"url": "https://example.com"}`)
-- `GET /clone/<base64_url>` - Clone from base64-encoded URL
+---
 
-Example API usage:
-```bash
-# Clone via query parameter
-curl "http://localhost:5000/clone?url=https://example.com"
+## 📊 File Type Analytics
 
-# Clone via POST
-curl -X POST http://localhost:5000/clone \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com"}'
-```
+The cloner tracks downloads across **8 categories** with **40+ file extensions**:
+
+- **Images**: jpg, jpeg, png, gif, webp, svg, ico, bmp, tiff, avif
+- **Stylesheets**: css, scss, sass, less
+- **Scripts**: js, jsx, ts, tsx, mjs, cjs
+- **Fonts**: woff, woff2, ttf, otf, eot
+- **Documents**: html, php, xml, txt, md, pdf
+- **Media**: mp4, webm, ogg, mp3, wav, etc.
+- **Data**: json, yaml, csv
+- **Other**: Everything else
+
+Each category shows:
+- Total files found
+- Successfully downloaded
+- Failed downloads
+- Visual progress bar
+
+---
 
 ## 📁 Project Structure
 
 ```
 src/
-├── __init__.py              # Package initialization
+├── __init__.py              # Library exports (ClonerSDK, clone_website, etc.)
 ├── config.py                # Configuration management
-├── cloner.py                # Main cloner class
+├── cloner.py                # Main WebsiteCloner class
+├── sdk.py                   # Developer-friendly SDK wrapper
 ├── main.py                  # CLI entry point
-├── app.py                   # Flask API application
+├── events/
+│   ├── __init__.py
+│   └── event_emitter.py     # Event system
 ├── drivers/
 │   ├── __init__.py
-│   └── chrome_driver.py     # Modern Selenium 4.x ChromeDriver manager
+│   └── chrome_driver.py     # Selenium ChromeDriver manager
 ├── downloaders/
 │   ├── __init__.py
-│   ├── resource_downloader.py  # Resource downloading with retry logic
+│   ├── resource_downloader.py  # Resource downloading
 │   └── css_downloader.py       # CSS asset extraction
 ├── parsers/
 │   ├── __init__.py
-│   └── html_parser.py          # HTML parsing and asset extraction
-└── utils/
-    ├── __init__.py
-    ├── logger.py               # Logging configuration
-    ├── url_utils.py            # URL manipulation utilities
-    └── file_utils.py           # File management utilities
+│   └── html_parser.py          # HTML parsing
+├── utils/
+│   ├── __init__.py
+│   ├── logger.py               # Logging
+│   ├── url_utils.py            # URL utilities
+│   └── file_utils.py           # File management
+└── web/
+    ├── fastapi_app.py          # Web UI backend
+    └── templates/
+        └── index.html          # Web UI frontend
+
+examples/                    # Library usage examples
+├── basic_usage.py
+├── advanced_usage.py
+├── batch_cloning.py
+└── custom_integration.py
+
+run_webui.py                # Start Web UI
+setup.py                    # Pip installation
+pyproject.toml              # Modern Python packaging
 ```
+
+---
+
+## 🔧 Command Line Interface
+
+```bash
+# Clone a website
+python -m src.main https://example.com
+
+# Custom output directory
+python -m src.main https://example.com --output ./my-clones
+
+# Show browser (not headless)
+python -m src.main https://example.com --visible
+
+# Enable debug logging
+python -m src.main https://example.com --debug
+```
+
+---
+
+## 🎯 Use Cases
+
+### 1. **SaaS Product**
+Build a website backup service:
+```python
+# Your FastAPI/Flask app
+@app.post("/api/clone")
+async def clone_website_api(url: str):
+    cloner = ClonerSDK()
+
+    @cloner.on_progress
+    async def send_progress(data):
+        await websocket.send_json({"progress": data.percentage})
+
+    output = await asyncio.to_thread(cloner.clone, url)
+    return {"output": str(output)}
+```
+
+### 2. **Automated Backups**
+Schedule daily backups:
+```python
+# cron job script
+from src import clone_website
+
+sites = ["https://mybusiness.com", "https://blog.company.com"]
+
+for site in sites:
+    output = clone_website(site)
+    print(f"Backed up {site} to {output}")
+```
+
+### 3. **CI/CD Integration**
+Test website migrations:
+```python
+# In your tests
+def test_website_migration():
+    # Clone production site
+    prod = clone_website("https://prod.example.com")
+
+    # Clone staging site
+    staging = clone_website("https://staging.example.com")
+
+    # Compare outputs
+    assert prod.exists()
+    assert staging.exists()
+```
+
+### 4. **Compliance/Legal**
+Automated archival for regulatory compliance:
+```python
+from src import ClonerSDK
+import datetime
+
+cloner = ClonerSDK()
+
+@cloner.on_complete
+def save_audit_trail(data):
+    with open("audit_log.txt", "a") as f:
+        f.write(f"{datetime.datetime.now()}: Archived {data.url}\n")
+
+cloner.clone("https://company-website.com")
+```
+
+---
 
 ## ⚙️ Configuration
 
-Create a `.env` file in the project root (copy from `.env.example`):
+Create a `.env` file in the project root:
 
 ```env
 # Browser Settings
@@ -160,126 +459,122 @@ PAGE_LOAD_WAIT=5
 
 # Download Settings
 REQUEST_TIMEOUT=7
+MAX_WORKERS=10
 
-# Flask Settings
+# Web UI Settings
 FLASK_HOST=localhost
-FLASK_PORT=5000
+FLASK_PORT=8000
 FLASK_DEBUG=false
 ```
 
-## 🎯 What's New in v2.0
-
-### Major Improvements
-
-1. **🔄 Automatic ChromeDriver Management**
-   - Uses `webdriver-manager` to auto-download compatible ChromeDriver
-   - No more manual driver downloads or version mismatches!
-
-2. **🏗️ Modern Architecture**
-   - Clean separation of concerns
-   - Object-oriented design with dependency injection
-   - Type hints throughout for better IDE support
-
-3. **📊 Professional Logging**
-   - Beautiful colored console output with Loguru
-   - File logging with rotation and compression
-   - Structured logging for better debugging
-
-4. **🔧 Configuration Management**
-   - Environment-based configuration
-   - Sensible defaults with easy customization
-   - No hardcoded values
-
-5. **🌐 Modern Selenium 4.x**
-   - Updated to latest Selenium syntax
-   - Uses `Service` and `Options` classes
-   - Chrome DevTools Protocol integration
-
-6. **🐛 Bug Fixes**
-   - Fixed deprecated `chrome_options` parameter
-   - Fixed `DesiredCapabilities` deprecation
-   - Better error handling and retry logic
-   - Fixed CSS asset extraction issues
-
-7. **📦 Better Dependency Management**
-   - Pinned versions for reproducibility
-   - Removed unnecessary dependencies
-   - Modern package versions
-
-### Breaking Changes
-
-- Old entry points (`AppMain.py`, `Main.py`) are now deprecated
-- Use `python -m src.main` instead
-- Flask app moved to `src/app.py`
-
-## 🔍 How It Works
-
-1. **Page Loading**: Selenium loads the webpage and waits for dynamic content
-2. **Network Capture**: Browser DevTools captures all network requests
-3. **HTML Parsing**: BeautifulSoup extracts all asset references (`<img>`, `<link>`, `<script>`, etc.)
-4. **Asset Download**: Downloads all assets with retry logic and fallback mechanisms
-5. **CSS Processing**: Extracts and downloads assets from CSS `url()` declarations
-6. **Path Rewriting**: Updates all URLs to point to local files
-7. **Project Structure**: Maintains original directory structure for assets
+---
 
 ## 🐛 Troubleshooting
 
 **ChromeDriver Issues:**
-- The app now auto-downloads ChromeDriver - no manual setup needed!
-- If you encounter issues, try: `pip install --upgrade webdriver-manager`
+- Auto-downloads ChromeDriver - no manual setup needed
+- If issues occur: `pip install --upgrade webdriver-manager`
 
 **Missing Assets:**
-- Check the logs with `--debug` flag
-- Some assets may be blocked by CORS or authentication
-- Network logs help identify dynamically loaded resources
+- Check logs with `--debug` flag
+- Some assets may be blocked by CORS
+- Use network logs to identify issues
 
 **Performance:**
-- Adjust `PAGE_LOAD_WAIT` in config for slower websites
-- Use headless mode for better performance
+- Increase `MAX_WORKERS` for faster downloads
+- Adjust `PAGE_LOAD_WAIT` for slower sites
+- Use `headless=True` for better performance
 
-## 📝 Development
+---
 
-### Running Tests
+## 📖 Examples
 
-```bash
-# Install dev dependencies
-pip install pytest pytest-cov
+See the `examples/` directory for complete examples:
 
-# Run tests (when implemented)
-pytest
-```
+- **`basic_usage.py`**: Simple cloning with callbacks
+- **`advanced_usage.py`**: Full event handling with decorators
+- **`batch_cloning.py`**: Clone multiple sites with reporting
+- **`custom_integration.py`**: Database, webhook, and monitoring integration
 
-### Code Style
-
-```bash
-# Format code
-pip install black isort
-black src/
-isort src/
-```
+---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please:
+Contributions welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
 
+---
+
 ## 📄 License
 
-[Your License Here]
-
-## 🙏 Acknowledgments
-
-- Built with Selenium, BeautifulSoup, Flask, and Loguru
-- Uses webdriver-manager for automatic ChromeDriver management
-
-## 📧 Support
-
-For issues and questions, please open a GitHub issue.
+MIT License - See LICENSE file for details
 
 ---
 
-**Note**: This tool is for educational purposes and testing. Always respect website terms of service and robots.txt when cloning websites.
+## 🙏 Acknowledgments
+
+Built with:
+- **Selenium 4.x** - Browser automation
+- **BeautifulSoup** - HTML parsing
+- **FastAPI** - Web UI backend
+- **Loguru** - Professional logging
+- **webdriver-manager** - Auto ChromeDriver management
+
+---
+
+## 📧 Support
+
+For issues and questions:
+- GitHub Issues: [Create an issue](../../issues)
+- Documentation: This README
+
+---
+
+## ⚠️ Important Notes
+
+**Legal Notice:**
+- This tool is for educational purposes and testing
+- Always respect website terms of service
+- Check `robots.txt` before cloning
+- Do not use for unauthorized scraping
+- Respect copyright and intellectual property
+
+**Best Practices:**
+- Use reasonable request rates
+- Don't overload servers
+- Clone only what you need
+- Test with small sites first
+
+---
+
+**Built with ❤️ for developers who need to clone websites**
+
+---
+
+## 🆚 Why Choose This Over Alternatives?
+
+| Feature | This Project | HTTrack | Wget | Scrapy |
+|---------|--------------|---------|------|--------|
+| JavaScript Execution | ✅ | ❌ | ❌ | ❌ |
+| Python SDK | ✅ | ❌ | ❌ | ✅ (complex) |
+| Web UI | ✅ | ❌ | ❌ | ❌ |
+| Event System | ✅ | ❌ | ❌ | ❌ |
+| Auto ChromeDriver | ✅ | N/A | N/A | ❌ |
+| File Type Analytics | ✅ | ❌ | ❌ | ❌ |
+| Modern Tech Stack | ✅ | ❌ (outdated) | ❌ | ✅ |
+| Beginner Friendly | ✅ | ⚠️ | ❌ | ❌ |
+| Developer Friendly | ✅ | ❌ | ⚠️ | ✅ |
+
+**Perfect for:**
+- Developers building SaaS products
+- Agencies needing automated backups
+- Compliance teams requiring archival
+- Anyone needing to clone modern websites
+
+---
+
+**Remember:** Use the **Web UI** for quick testing, use the **Library** for building applications! 🚀

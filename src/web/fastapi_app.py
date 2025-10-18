@@ -44,6 +44,7 @@ class CloneStatus(BaseModel):
 clone_jobs = {}
 log_queues = {}  # Store log queues for each job
 cancel_flags = {}  # Store cancel flags for each job
+log_handler_ids = {}  # Store log handler IDs for each job to prevent duplicates
 
 
 class QueueLogHandler:
@@ -62,6 +63,16 @@ class QueueLogHandler:
 
 def clone_with_logging(url: str, headless: bool, job_id: str):
     """Clone website and capture logs to queue"""
+    # Remove old handler if it exists to prevent duplicate log captures
+    if job_id in log_handler_ids:
+        old_handler_id = log_handler_ids[job_id]
+        try:
+            logger.remove(old_handler_id)
+            print(f"[DEBUG] Removed old log handler {old_handler_id} for job {job_id}")
+        except:
+            pass  # Handler might have already been removed
+        del log_handler_ids[job_id]
+
     # Get or create log queue
     if job_id not in log_queues:
         log_queues[job_id] = queue.Queue()
@@ -87,24 +98,27 @@ def clone_with_logging(url: str, headless: bool, job_id: str):
     print(f"[DEBUG] Adding log handler for job {job_id}")
     handler_id = logger.add(
         log_sink,
-        level="DEBUG",  # Set to DEBUG to capture everything
+        level="INFO",  # Only capture INFO and above (excludes DEBUG messages)
         format="{message}",
         filter=None,  # Accept all modules
         enqueue=False  # Don't enqueue to avoid threading issues
     )
+    log_handler_ids[job_id] = handler_id  # Store handler ID
     print(f"[DEBUG] Log handler added with ID: {handler_id}")
 
     try:
-        log_q.put_nowait("🚀 Starting clone process...")
-        log_q.put_nowait(f"📍 Target URL: {url}")
+        log_q.put_nowait("Starting clone process...")
+        log_q.put_nowait(f"Target URL: {url}")
         result = clone_website(url, headless)
-        log_q.put_nowait("✅ Clone completed successfully!")
+        log_q.put_nowait("Clone completed successfully!")
         return result
     except Exception as e:
-        log_q.put_nowait(f"❌ Error: {str(e)}")
+        log_q.put_nowait(f"Error: {str(e)}")
         raise
     finally:
         logger.remove(handler_id)
+        if job_id in log_handler_ids and log_handler_ids[job_id] == handler_id:
+            del log_handler_ids[job_id]
 
 
 def create_app() -> FastAPI:
@@ -157,6 +171,24 @@ def create_app() -> FastAPI:
         # Create job_id matching frontend encoding (removes trailing =)
         job_id = base64.urlsafe_b64encode(url.encode()).decode().rstrip('=')
 
+        # If a clone with this job_id is already running, cancel it
+        if job_id in clone_jobs:
+            old_status = clone_jobs[job_id].get("status")
+            if old_status == "cloning":
+                logger.warning(f"Cancelling existing clone job: {job_id}")
+                cancel_flags[job_id] = True
+                # Wait a moment for the old job to notice cancellation
+                await asyncio.sleep(0.5)
+
+        # Clear old queue if it exists and create fresh one
+        if job_id in log_queues:
+            # Drain old queue
+            while not log_queues[job_id].empty():
+                try:
+                    log_queues[job_id].get_nowait()
+                except:
+                    break
+
         # Initialize job status and log queue
         clone_jobs[job_id] = {
             "status": "cloning",
@@ -165,6 +197,7 @@ def create_app() -> FastAPI:
             "url": url
         }
         log_queues[job_id] = queue.Queue()
+        cancel_flags[job_id] = False  # Clear cancel flag for new job
 
         try:
             logger.info(f"Web UI: Starting clone of {url}")
@@ -287,7 +320,8 @@ def create_app() -> FastAPI:
         return {
             "log_queues": list(log_queues.keys()),
             "clone_jobs": list(clone_jobs.keys()),
-            "cancel_flags": list(cancel_flags.keys())
+            "cancel_flags": list(cancel_flags.keys()),
+            "log_handler_ids": {k: v for k, v in log_handler_ids.items()}
         }
 
     @app.get("/api/logs/{job_id}/test")
@@ -345,13 +379,21 @@ def create_app() -> FastAPI:
                     qsize = log_q.qsize()
                     if qsize > 0:
                         print(f"[SSE] Queue has {qsize} messages")
-                    try:
-                        message = log_q.get(timeout=0.1)
-                        # Properly encode message as JSON
-                        data = json.dumps({"type": "log", "message": message})
-                        print(f"[SSE] Sending message: {message[:50]}")
-                        yield f"data: {data}\n\n"
-                    except queue.Empty:
+
+                    # Try to drain all available messages
+                    messages_sent = 0
+                    while not log_q.empty():
+                        try:
+                            message = log_q.get_nowait()
+                            # Properly encode message as JSON
+                            data = json.dumps({"type": "log", "message": message})
+                            print(f"[SSE] Sending: {message[:50]}")
+                            yield f"data: {data}\n\n"
+                            messages_sent += 1
+                        except queue.Empty:
+                            break
+
+                    if messages_sent == 0:
                         # Send heartbeat
                         yield f": heartbeat\n\n"
 

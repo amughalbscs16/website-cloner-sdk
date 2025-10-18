@@ -1,1 +1,0 @@
-CookieConsent.setOutOfRegion();

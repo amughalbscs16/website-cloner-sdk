@@ -35,8 +35,12 @@ ENV/
 *.swp
 *.swo
 *~
+
+# Claude AI files (DO NOT COMMIT)
 .claude/
 *.claude
+.claude.*
+*claude*.md
 
 # OS Files
 .DS_Store
@@ -73,6 +77,13 @@ basic-flask-app-master/
 
 # Plans folder (development notes and planning)
 plans/
+
+# Development/Planning docs (NOT for public repo)
+COMPETITIVE_ANALYSIS.md
+IMPLEMENTATION_GUIDE.md
+SDK_DOCUMENTATION.md
+SETUP_SUMMARY.txt
+test_sdk.py
 
 # Documentation (keep only essential ones in repo)
 *.md

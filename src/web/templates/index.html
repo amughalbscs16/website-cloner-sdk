@@ -12,13 +12,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <style>
+        /* Professional Black & White Theme */
         .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
         }
 
         .loading-spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+            border: 3px solid #e5e5e5;
+            border-top: 3px solid #000000;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -48,8 +49,8 @@
         }
 
         .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
 
         .animate-fade-in {
@@ -79,7 +80,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-white">
     <!-- Header -->
     <header class="gradient-bg text-white shadow-lg">
         <div class="container mx-auto px-4 py-6">
@@ -102,9 +103,9 @@
     <main class="container mx-auto px-4 py-8">
         <!-- Clone Form -->
         <div class="max-w-4xl mx-auto">
-            <div class="bg-white rounded-lg shadow-md p-6 mb-8 card-hover">
+            <div class="bg-gray-50 rounded-lg shadow-sm border border-gray-200 p-6 mb-8 card-hover">
                 <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-globe text-purple-600 mr-2"></i>
+                    <i class="fas fa-globe text-black mr-2"></i>
                     Clone a Website
                 </h2>
 
@@ -119,7 +120,7 @@
                             name="url"
                             placeholder="https://example.com"
                             required
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-all"
                         >
                     </div>
 
@@ -129,7 +130,7 @@
                             id="headless"
                             name="headless"
                             checked
-                            class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                            class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black"
                         >
                         <label for="headless" class="text-sm text-gray-700">
                             Run in headless mode (faster, no browser window)
@@ -139,7 +140,7 @@
                     <button
                         type="submit"
                         id="cloneBtn"
-                        class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                        class="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-all shadow-md hover:shadow-lg"
                     >
                         <i class="fas fa-download mr-2"></i>
                         Start Cloning
@@ -147,14 +148,14 @@
                 </form>
 
                 <!-- Loading State -->
-                <div id="loadingState" class="hidden mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div id="loadingState" class="hidden mt-6 p-4 bg-gray-50 rounded-lg border border-gray-300">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center space-x-4 flex-1">
                             <div class="loading-spinner"></div>
                             <div class="flex-1">
-                                <p class="font-semibold text-blue-900" id="loadingMessage">Starting clone process...</p>
-                                <div class="w-full bg-blue-200 rounded-full h-2 mt-2">
-                                    <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                                <p class="font-semibold text-gray-900" id="loadingMessage">Starting clone process...</p>
+                                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                    <div id="progressBar" class="bg-black h-2 rounded-full transition-all" style="width: 0%"></div>
                                 </div>
                             </div>
                         </div>
@@ -171,7 +172,7 @@
                     <!-- Resource Stats -->
                     <div class="grid grid-cols-3 gap-4 mb-4">
                         <div class="bg-white rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-blue-600" id="totalResources">0</div>
+                            <div class="text-2xl font-bold text-gray-800" id="totalResources">0</div>
                             <div class="text-xs text-gray-600 mt-1">Total Resources</div>
                         </div>
                         <div class="bg-white rounded-lg p-3 text-center">
@@ -179,16 +180,34 @@
                             <div class="text-xs text-gray-600 mt-1">Downloaded</div>
                         </div>
                         <div class="bg-white rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-purple-600" id="elapsedTime">0s</div>
+                            <div class="text-2xl font-bold text-black" id="elapsedTime">0s</div>
                             <div class="text-xs text-gray-600 mt-1">Elapsed</div>
                         </div>
                     </div>
 
+                    <!-- File Type Breakdown -->
+                    <div class="bg-white rounded-lg border border-gray-200 mb-4">
+                        <div class="p-3 bg-gray-50 border-b border-gray-200">
+                            <h3 class="font-semibold text-gray-700 text-sm flex items-center">
+                                <i class="fas fa-chart-pie text-black mr-2"></i>
+                                File Type Statistics
+                            </h3>
+                        </div>
+                        <div class="p-3">
+                            <div id="fileTypeStats" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                                <!-- Stats will be populated here -->
+                                <div class="text-center text-gray-400 col-span-full py-4">
+                                    No data yet
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Resource List -->
-                    <div class="bg-white rounded-lg border border-gray-200">
+                    <div class="bg-white rounded-lg border border-gray-200 mb-4">
                         <div class="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                             <h3 class="font-semibold text-gray-700 text-sm flex items-center">
-                                <i class="fas fa-download text-blue-500 mr-2"></i>
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
                                 Downloaded Resources
                             </h3>
                             <button
@@ -206,6 +225,21 @@
                             <div id="emptyResourceMessage" class="p-8 text-center text-gray-400 text-sm">
                                 <i class="fas fa-hourglass-half text-2xl mb-2"></i>
                                 <p>Waiting for resources...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Failed Downloads -->
+                    <div id="failedDownloadsSection" class="bg-white rounded-lg border border-red-200 hidden">
+                        <div class="p-3 bg-red-50 border-b border-red-200">
+                            <h3 class="font-semibold text-red-700 text-sm flex items-center">
+                                <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                                Failed Downloads (<span id="failedCount">0</span>)
+                            </h3>
+                        </div>
+                        <div class="max-h-48 overflow-y-auto">
+                            <div id="failedList" class="divide-y divide-red-100 text-xs">
+                                <!-- Failed resources will be added here -->
                             </div>
                         </div>
                     </div>
@@ -236,15 +270,15 @@
 
             <!-- Preview Section -->
             <div id="previewSection" class="hidden fade-in">
-                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="bg-gray-50 rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-semibold flex items-center">
-                            <i class="fas fa-eye text-purple-600 mr-2"></i>
+                            <i class="fas fa-eye text-black mr-2"></i>
                             Preview
                         </h2>
                         <button
                             onclick="openInNewTab()"
-                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                            class="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-sm"
                         >
                             <i class="fas fa-external-link-alt mr-2"></i>
                             Open in New Tab
@@ -264,7 +298,7 @@
                         <a
                             href="#"
                             id="downloadLink"
-                            class="text-purple-600 hover:text-purple-700 font-medium"
+                            class="text-black hover:text-gray-700 font-medium"
                         >
                             <i class="fas fa-folder mr-1"></i>
                             View Files
@@ -274,15 +308,15 @@
             </div>
 
             <!-- Project History -->
-            <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="bg-gray-50 rounded-lg shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-history text-purple-600 mr-2"></i>
+                        <i class="fas fa-history text-black mr-2"></i>
                         Recent Projects
                     </h2>
                     <button
                         onclick="loadProjects()"
-                        class="text-purple-600 hover:text-purple-700 text-sm font-medium"
+                        class="text-black hover:text-gray-700 text-sm font-medium"
                     >
                         <i class="fas fa-sync-alt mr-1"></i>
                         Refresh
@@ -314,33 +348,74 @@
         let currentPreviewUrl = '';
         let eventSource = null;
         let currentJobId = null;
-        let downloadedResources = new Set();
+        let downloadedResources = new Set();  // Successfully downloaded
+        let allDiscoveredResources = new Set();  // All attempted (success + fail)
+        let failedResources = new Set();  // Failed downloads
         let totalResourcesCount = 0;
         let startTime = null;
         let timerInterval = null;
+
+        // File type statistics
+        let fileTypeStats = {
+            'images': { total: 0, success: 0, icon: 'fa-image', color: 'text-green-600' },
+            'stylesheets': { total: 0, success: 0, icon: 'fa-file-code', color: 'text-blue-600' },
+            'scripts': { total: 0, success: 0, icon: 'fa-code', color: 'text-yellow-600' },
+            'fonts': { total: 0, success: 0, icon: 'fa-font', color: 'text-purple-600' },
+            'documents': { total: 0, success: 0, icon: 'fa-file-alt', color: 'text-red-600' },
+            'media': { total: 0, success: 0, icon: 'fa-film', color: 'text-pink-600' },
+            'data': { total: 0, success: 0, icon: 'fa-database', color: 'text-indigo-600' },
+            'other': { total: 0, success: 0, icon: 'fa-file', color: 'text-gray-600' }
+        };
 
         // Clone form submission
         document.getElementById('cloneForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const url = document.getElementById('url').value;
+            let url = document.getElementById('url').value;
             const headless = document.getElementById('headless').checked;
+
+            // Normalize URL to match Python's Pydantic HttpUrl behavior
+            // Pydantic adds trailing slash if path is empty or just "/"
+            try {
+                const urlObj = new URL(url);
+                // If pathname is empty or just "/", ensure it ends with "/"
+                if (!urlObj.pathname || urlObj.pathname === '' || urlObj.pathname === '/') {
+                    // Reconstruct URL with trailing slash
+                    url = urlObj.protocol + '//' + urlObj.host + '/';
+                    if (urlObj.search) url += urlObj.search;
+                    if (urlObj.hash) url += urlObj.hash;
+                }
+            } catch (e) {
+                // Invalid URL, let backend handle it
+            }
 
             // Reset states
             downloadedResources.clear();
+            allDiscoveredResources.clear();
+            failedResources.clear();
             totalResourcesCount = 0;
+
+            // Reset file type stats
+            Object.keys(fileTypeStats).forEach(key => {
+                fileTypeStats[key].total = 0;
+                fileTypeStats[key].success = 0;
+            });
+
             document.getElementById('loadingState').classList.remove('hidden');
             document.getElementById('successState').classList.add('hidden');
             document.getElementById('errorState').classList.add('hidden');
             document.getElementById('previewSection').classList.add('hidden');
             document.getElementById('resourceList').innerHTML = '';
+            document.getElementById('failedList').innerHTML = '';
             document.getElementById('emptyResourceMessage').classList.remove('hidden');
+            document.getElementById('failedDownloadsSection').classList.add('hidden');
             document.getElementById('totalResources').textContent = '0';
             document.getElementById('downloadedCount').textContent = '0';
             document.getElementById('elapsedTime').textContent = '0s';
             document.getElementById('cloneBtn').disabled = true;
+            updateFileTypeStats();
 
-            // Calculate job ID (base64 encoded URL)
+            // Calculate job ID (base64 encoded URL) - now using normalized URL
             currentJobId = btoa(url).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
             // Start timer
@@ -466,6 +541,95 @@
             }
         }
 
+        function getFileTypeCategory(resource) {
+            // Comprehensive file type detection
+            const url = resource.toLowerCase();
+
+            // Images
+            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|ico|bmp|tiff?|avif)$/i)) {
+                return 'images';
+            }
+            // Stylesheets
+            else if (url.match(/\.(css|scss|sass|less)$/i)) {
+                return 'stylesheets';
+            }
+            // Scripts
+            else if (url.match(/\.(js|jsx|ts|tsx|mjs|cjs)$/i)) {
+                return 'scripts';
+            }
+            // Fonts
+            else if (url.match(/\.(woff2?|ttf|otf|eot)$/i)) {
+                return 'fonts';
+            }
+            // Documents
+            else if (url.match(/\.(html?|php|xml|txt|md|pdf)$/i)) {
+                return 'documents';
+            }
+            // Media (video/audio)
+            else if (url.match(/\.(mp4|webm|ogg|avi|mov|mp3|wav|flac|aac)$/i)) {
+                return 'media';
+            }
+            // Data files
+            else if (url.match(/\.(json|xml|csv|yaml|yml)$/i)) {
+                return 'data';
+            }
+            // Other
+            else {
+                return 'other';
+            }
+        }
+
+        function updateFileTypeStats() {
+            const container = document.getElementById('fileTypeStats');
+            const hasData = Object.values(fileTypeStats).some(stat => stat.total > 0);
+
+            if (!hasData) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-400 col-span-full py-4">
+                        No data yet
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = Object.entries(fileTypeStats)
+                .filter(([_, stats]) => stats.total > 0)
+                .map(([type, stats]) => `
+                    <div class="bg-gray-50 rounded p-2 border border-gray-200">
+                        <div class="flex items-center justify-between mb-1">
+                            <i class="fas ${stats.icon} ${stats.color}"></i>
+                            <span class="font-bold">${stats.success}/${stats.total}</span>
+                        </div>
+                        <div class="text-gray-600 capitalize">${type}</div>
+                        <div class="w-full bg-gray-200 rounded-full h-1 mt-1">
+                            <div class="bg-green-500 h-1 rounded-full" style="width: ${stats.total > 0 ? (stats.success / stats.total * 100) : 0}%"></div>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        function addFailedResource(resource) {
+            if (failedResources.has(resource)) return;
+
+            failedResources.add(resource);
+            const section = document.getElementById('failedDownloadsSection');
+            const list = document.getElementById('failedList');
+
+            section.classList.remove('hidden');
+            document.getElementById('failedCount').textContent = failedResources.size;
+
+            const item = document.createElement('div');
+            item.className = 'p-2 hover:bg-red-50';
+            const displayName = resource.length > 80 ? resource.substring(0, 77) + '...' : resource;
+            item.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-times-circle text-red-500"></i>
+                    <span class="text-gray-700 truncate" title="${resource}">${displayName}</span>
+                </div>
+            `;
+            list.appendChild(item);
+        }
+
         function parseAndDisplayResource(message) {
             // Parse log messages for downloaded resources
             // Look for patterns like "Downloaded: https://..." or "Saved index.html"
@@ -478,44 +642,81 @@
                 document.getElementById('progressBar').style.width = '20%';
             }
 
+            // Update total from final statistics: "X succeeded | Y failed | Z skipped"
+            const statsMatch = message.match(/Download statistics:\s*(\d+)\s+succeeded\s*\|\s*(\d+)\s+failed\s*\|\s*(\d+)\s+skipped/i);
+            if (statsMatch) {
+                const succeeded = parseInt(statsMatch[1]);
+                const failed = parseInt(statsMatch[2]);
+                const skipped = parseInt(statsMatch[3]);
+                totalResourcesCount = succeeded + failed + skipped;
+                document.getElementById('totalResources').textContent = totalResourcesCount;
+            }
+
             // Extract resource info from different log patterns
             let resource = '';
             let icon = 'fa-file';
             let color = 'text-blue-500';
 
-            // Pattern 1: "Downloaded: URL -> path"
-            const downloadMatch = message.match(/Downloaded:\s*(.+?)\s*->\s*(.+?)$/);
+            // Track both successful AND failed downloads for total count
+            let isSuccess = false;
+
+            // Pattern 1: "Downloaded: URL -> path" (successful download)
+            const downloadMatch = message.match(/^Downloaded:\s*(.+?)\s*->\s*(.+?)$/);
             if (downloadMatch) {
                 resource = downloadMatch[1].trim();
+                isSuccess = true;
             }
-            // Pattern 2: "Downloaded via requests: URL"
-            else if (message.match(/Downloaded\s+via\s+requests:\s*(.+)$/i)) {
-                const match = message.match(/Downloaded\s+via\s+requests:\s*(.+)$/i);
-                if (match) resource = match[1].trim();
+            // Pattern 2: "Downloaded favicon: URL" (successful favicon)
+            else if (message.match(/^Downloaded favicon:\s*(.+)$/)) {
+                const faviconMatch = message.match(/^Downloaded favicon:\s*(.+)$/);
+                if (faviconMatch) {
+                    resource = faviconMatch[1].trim();
+                    isSuccess = true;
+                }
             }
-            // Pattern 3: "Downloaded via urllib3: URL"
-            else if (message.match(/Downloaded\s+via\s+urllib3:\s*(.+)$/i)) {
-                const match = message.match(/Downloaded\s+via\s+urllib3:\s*(.+)$/i);
-                if (match) resource = match[1].trim();
-            }
-            // Pattern 4: "Saved index.html"
+            // Pattern 3: "Saved index.html" (successful HTML save)
             else if (message.includes('Saved index.html')) {
                 resource = 'index.html';
+                isSuccess = true;
             }
-            // Pattern 5: "Downloaded favicon: URL"
-            else if (message.match(/Downloaded\s+favicon:\s*(.+)$/i)) {
-                const match = message.match(/Downloaded\s+favicon:\s*(.+)$/i);
-                if (match) resource = match[1].trim();
+            // Pattern 4: "Could not download: URL" (failed download)
+            else if (message.match(/^Could not download:\s*(.+)$/)) {
+                const failMatch = message.match(/^Could not download:\s*(.+)$/);
+                if (failMatch) resource = failMatch[1].trim();
             }
+            // Pattern 5: "Failed to download (tried all methods): URL"
+            else if (message.match(/^Failed to download \(tried all methods\):\s*(.+)$/)) {
+                const failMatch = message.match(/^Failed to download \(tried all methods\):\s*(.+)$/);
+                if (failMatch) resource = failMatch[1].trim();
+            }
+            // Ignore intermediate/debug messages:
+            // - "Downloaded via requests: URL" (debug logging - not sent)
+            // - "Saved file: path" (internal confirmation)
+            // - "Skipping (not in network logs)" (debug - not sent)
 
             // Determine file type and icon
             if (resource) {
+                // Track all discovered resources (success + failed) for total count
+                const wasNew = !allDiscoveredResources.has(resource);
+                allDiscoveredResources.add(resource);
+
+                // Track file type statistics
+                const fileType = getFileTypeCategory(resource);
+                if (wasNew) {
+                    fileTypeStats[fileType].total++;
+                    if (isSuccess) {
+                        fileTypeStats[fileType].success++;
+                    } else {
+                        addFailedResource(resource);  // Add to failed list
+                    }
+                }
+
                 if (resource.match(/\.(jpg|jpeg|png|gif|webp|svg|ico)$/i)) {
                     icon = 'fa-image';
                     color = 'text-green-500';
                 } else if (resource.match(/\.(css)$/i)) {
                     icon = 'fa-file-code';
-                    color = 'text-purple-500';
+                    color = 'text-gray-700';
                 } else if (resource.match(/\.(js)$/i)) {
                     icon = 'fa-file-code';
                     color = 'text-yellow-500';
@@ -530,11 +731,16 @@
                     color = 'text-orange-500';
                 }
 
-                // Add to list if new
-                if (!downloadedResources.has(resource)) {
+                // Only add successful downloads to the list and downloaded count
+                if (isSuccess && wasNew && !downloadedResources.has(resource)) {
                     downloadedResources.add(resource);
                     addResourceToList(resource, icon, color);
+                }
+
+                // Update stats (will show total discovered and successful downloads)
+                if (wasNew) {
                     updateStats();
+                    updateFileTypeStats();  // Update file type breakdown
                 }
             }
 
@@ -585,11 +791,14 @@
 
         function updateStats() {
             const count = downloadedResources.size;
+            const total = allDiscoveredResources.size;
+
             document.getElementById('downloadedCount').textContent = count;
+            document.getElementById('totalResources').textContent = total;
 
             // Update progress bar based on progress
-            if (totalResourcesCount > 0) {
-                const percentage = Math.min(95, Math.floor((count / totalResourcesCount) * 100));
+            if (total > 0) {
+                const percentage = Math.min(95, Math.floor((count / total) * 100));
                 document.getElementById('progressBar').style.width = `${percentage}%`;
             }
         }
@@ -655,7 +864,7 @@
                 }
 
                 projectsList.innerHTML = data.projects.map(project => `
-                    <div class="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
+                    <div class="border border-gray-200 rounded-lg p-4 hover:border-black transition-colors">
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
                                 <h3 class="font-medium text-gray-900 mb-1">${escapeHtml(project.url)}</h3>
@@ -664,7 +873,7 @@
                             <div class="flex items-center space-x-2">
                                 <button
                                     onclick="showPreview('${project.preview_url}', '${escapeHtml(project.url)}')"
-                                    class="px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 text-sm"
+                                    class="px-3 py-1 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm"
                                 >
                                     <i class="fas fa-eye mr-1"></i>
                                     View

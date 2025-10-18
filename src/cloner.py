@@ -2,6 +2,7 @@
 
 import json
 import time
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -13,20 +14,28 @@ from .drivers.chrome_driver import ChromeDriverManager
 from .downloaders.resource_downloader import ResourceDownloader
 from .downloaders.css_downloader import CSSAssetDownloader
 from .parsers.html_parser import HTMLParser
+from .events import EventEmitter, ClonerEvents
+from .events.event_emitter import (
+    CloneStartData, CloneCompleteData, CloneErrorData,
+    ProgressData, StatsData
+)
 
 
 class WebsiteCloner:
     """Main class for cloning websites"""
 
-    def __init__(self, headless: bool = None):
+    def __init__(self, headless: bool = None, event_emitter: Optional[EventEmitter] = None):
         """
         Initialize website cloner
 
         Args:
             headless: Run browser in headless mode (default from config)
+            event_emitter: Optional event emitter for progress updates
         """
         self.headless = headless if headless is not None else config.HEADLESS
         self.driver_manager: Optional[ChromeDriverManager] = None
+        self.event_emitter = event_emitter or EventEmitter()
+        self._start_time: Optional[datetime] = None
 
     def clone(self, url: str) -> Path:
         """
@@ -40,6 +49,19 @@ class WebsiteCloner:
         """
         # Clean URL
         url = URLUtils.clean_url(url)
+        self._start_time = datetime.now()
+
+        # Emit clone start event
+        self.event_emitter.emit(ClonerEvents.CLONE_START, CloneStartData(
+            url=url,
+            headless=self.headless
+        ))
+        self.event_emitter.emit(ClonerEvents.PROGRESS_UPDATE, ProgressData(
+            stage="initialization",
+            message=f"Starting clone of: {url}",
+            percentage=0.0
+        ))
+
         logger.info(f"Starting clone of: {url}")
 
         # Setup file manager
@@ -52,29 +74,58 @@ class WebsiteCloner:
 
         try:
             # Load the page
+            self.event_emitter.emit(ClonerEvents.PROGRESS_UPDATE, ProgressData(
+                stage="loading",
+                message="Loading page...",
+                percentage=10.0
+            ))
             logger.info("Loading page...")
             driver.get(url)
             time.sleep(config.PAGE_LOAD_WAIT)
 
             # Get page source
             page_source = driver.page_source
+            self.event_emitter.emit(ClonerEvents.PAGE_LOADED, ProgressData(
+                stage="loaded",
+                message="Page loaded successfully",
+                percentage=20.0
+            ))
 
             # Extract network URLs
+            self.event_emitter.emit(ClonerEvents.PROGRESS_UPDATE, ProgressData(
+                stage="network_extraction",
+                message="Extracting network logs...",
+                percentage=25.0
+            ))
             logger.info("Extracting network logs...")
             network_urls = set(self.driver_manager.get_network_logs(driver))
             logger.info(f"Found {len(network_urls)} network requests")
+
+            self.event_emitter.emit(ClonerEvents.NETWORK_LOGS_EXTRACTED, StatsData(
+                total_resources=len(network_urls),
+                successful_downloads=0,
+                failed_downloads=0,
+                skipped_downloads=0,
+                in_progress=0
+            ))
 
             # Initialize downloaders with parallel download support
             logger.info(f"Using {config.MAX_WORKERS} parallel download threads")
             resource_downloader = ResourceDownloader(
                 file_manager,
                 network_urls,
-                max_workers=config.MAX_WORKERS
+                max_workers=config.MAX_WORKERS,
+                event_emitter=self.event_emitter
             )
             css_downloader = CSSAssetDownloader(file_manager, resource_downloader)
             html_parser = HTMLParser(resource_downloader)
 
             # Process HTML
+            self.event_emitter.emit(ClonerEvents.HTML_PROCESSING_START, ProgressData(
+                stage="html_processing",
+                message="Processing HTML and downloading assets...",
+                percentage=30.0
+            ))
             logger.info("Processing HTML and downloading assets...")
             processed_html = html_parser.process_html(page_source, url, project_path)
 
@@ -83,23 +134,67 @@ class WebsiteCloner:
             index_path.write_text(processed_html, encoding='utf-8')
             logger.info(f"Saved index.html: {index_path}")
 
+            self.event_emitter.emit(ClonerEvents.HTML_PROCESSING_COMPLETE, ProgressData(
+                stage="html_complete",
+                message="HTML processing complete",
+                percentage=70.0
+            ))
+
             # Process CSS files for internal assets
+            self.event_emitter.emit(ClonerEvents.CSS_PROCESSING_START, ProgressData(
+                stage="css_processing",
+                message="Processing CSS files for internal assets...",
+                percentage=75.0
+            ))
             logger.info("Processing CSS files for internal assets...")
             self._process_css_files(project_path, css_downloader)
+
+            self.event_emitter.emit(ClonerEvents.CSS_PROCESSING_COMPLETE, ProgressData(
+                stage="css_complete",
+                message="CSS processing complete",
+                percentage=90.0
+            ))
 
             # Log download statistics
             stats = resource_downloader.download_stats
             logger.success(f"Successfully cloned: {url}")
             logger.info(f"Output directory: {project_path}")
-            logger.info(f"Download statistics: ✅ {stats['success']} succeeded | ❌ {stats['failed']} failed | ⏭️ {stats['skipped']} skipped")
+            logger.info(f"Download statistics: {stats['success']} succeeded | {stats['failed']} failed | {stats['skipped']} skipped")
 
             # Generate download manifest
             self._generate_manifest(project_path, url, resource_downloader)
+
+            # Calculate duration
+            duration = (datetime.now() - self._start_time).total_seconds()
+
+            # Emit completion event
+            self.event_emitter.emit(ClonerEvents.CLONE_COMPLETE, CloneCompleteData(
+                url=url,
+                output_path=str(project_path),
+                duration_seconds=duration,
+                total_resources=stats['success'] + stats['failed'] + stats['skipped'],
+                successful_downloads=stats['success'],
+                failed_downloads=stats['failed'],
+                skipped_downloads=stats['skipped']
+            ))
+            self.event_emitter.emit(ClonerEvents.PROGRESS_UPDATE, ProgressData(
+                stage="complete",
+                message="Clone complete!",
+                percentage=100.0
+            ))
 
             return project_path
 
         except Exception as e:
             logger.error(f"Failed to clone website: {e}")
+
+            # Emit error event
+            self.event_emitter.emit(ClonerEvents.CLONE_ERROR, CloneErrorData(
+                url=url,
+                error=str(e),
+                traceback=traceback.format_exc()
+            ))
+
             raise
 
         finally:

@@ -3,7 +3,7 @@
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Optional, Dict, Set, List, Tuple
+from typing import Optional, Dict, Set, List, Tuple, TYPE_CHECKING
 import requests
 import urllib3
 import httpx
@@ -12,11 +12,14 @@ from ..utils.logger import logger
 from ..utils.url_utils import URLUtils
 from ..utils.file_utils import FileManager
 
+if TYPE_CHECKING:
+    from ..events import EventEmitter
+
 
 class ResourceDownloader:
     """Handles downloading of web resources"""
 
-    def __init__(self, file_manager: FileManager, network_urls: Set[str] = None, max_workers: int = 10):
+    def __init__(self, file_manager: FileManager, network_urls: Set[str] = None, max_workers: int = 10, event_emitter: Optional['EventEmitter'] = None):
         """
         Initialize resource downloader
 
@@ -24,6 +27,7 @@ class ResourceDownloader:
             file_manager: FileManager instance
             network_urls: Set of URLs captured from network logs
             max_workers: Number of parallel download threads (default: 10)
+            event_emitter: Optional event emitter for progress updates
         """
         self.file_manager = file_manager
         self.network_urls = network_urls or set()
@@ -33,6 +37,7 @@ class ResourceDownloader:
         self.download_stats = {"success": 0, "failed": 0, "skipped": 0}
         self.successful_downloads = []  # List of successfully downloaded URLs
         self.failed_downloads = []  # List of failed downloads with reasons
+        self.event_emitter = event_emitter
 
     def download_with_requests(self, url: str, timeout: int = None) -> Optional[requests.Response]:
         """
