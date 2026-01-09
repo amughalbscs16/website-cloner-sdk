@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screenshots - {{ project_name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
+        }
+
+        .screenshot-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .screenshot-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        .modal-overlay {
+            backdrop-filter: blur(4px);
+        }
+
+        .screenshot-img {
+            max-height: 70vh;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <a href="/" class="text-white hover:text-gray-300">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <i class="fas fa-images text-2xl"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold">Screenshot Gallery</h1>
+                        <p class="text-sm opacity-90">{{ project_name }}</p>
+                    </div>
+                </div>
+                <div>
+                    <button onclick="window.location.reload()" class="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition">
+                        <i class="fas fa-sync-alt mr-2"></i>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Statistics -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-gray-800" id="totalCount">0</div>
+                    <div class="text-sm text-gray-600 mt-1">Total Screenshots</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-blue-600" id="todayCount">0</div>
+                    <div class="text-sm text-gray-600 mt-1">Today</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-green-600" id="totalSize">0 MB</div>
+                    <div class="text-sm text-gray-600 mt-1">Total Size</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-purple-600" id="pageCount">0</div>
+                    <div class="text-sm text-gray-600 mt-1">Pages</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+            <p class="mt-4 text-gray-600">Loading screenshots...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-12">
+            <i class="fas fa-images text-6xl text-gray-300 mb-4"></i>
+            <p class="text-xl text-gray-600">No screenshots found</p>
+            <p class="text-sm text-gray-500 mt-2">Screenshots will appear here after cloning with screenshot capture enabled</p>
+        </div>
+
+        <!-- Screenshot Grid -->
+        <div id="screenshotGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Screenshots will be populated here -->
+        </div>
+    </main>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="hidden fixed inset-0 z-50 modal-overlay bg-black/80" onclick="closeLightbox()">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="relative max-w-6xl w-full" onclick="event.stopPropagation()">
+                <button onclick="closeLightbox()" class="absolute -top-12 right-0 text-white text-2xl hover:text-gray-300">
+                    <i class="fas fa-times"></i>
+                </button>
+                <img id="lightboxImg" src="" class="screenshot-img w-full rounded-lg shadow-2xl">
+                <div class="mt-4 bg-white rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-900" id="lightboxFilename"></h3>
+                    <div class="grid grid-cols-2 gap-2 mt-2 text-sm text-gray-600">
+                        <div><strong>Date:</strong> <span id="lightboxDate"></span></div>
+                        <div><strong>Size:</strong> <span id="lightboxSize"></span></div>
+                        <div class="col-span-2"><strong>Path:</strong> <span id="lightboxPath"></span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const projectName = "{{ project_name }}";
+        let screenshots = [];
+
+        async function loadScreenshots() {
+            try {
+                const response = await fetch(`/api/screenshots/${projectName}`);
+                const data = await response.json();
+
+                screenshots = data.screenshots || [];
+
+                // Update statistics
+                document.getElementById('totalCount').textContent = data.count;
+
+                // Calculate today's count
+                const today = new Date().toISOString().split('T')[0];
+                const todayCount = screenshots.filter(s => {
+                    const date = new Date(s.modified * 1000).toISOString().split('T')[0];
+                    return date === today;
+                }).length;
+                document.getElementById('todayCount').textContent = todayCount;
+
+                // Calculate total size
+                const totalBytes = screenshots.reduce((sum, s) => sum + s.size, 0);
+                const totalMB = (totalBytes / 1024 / 1024).toFixed(2);
+                document.getElementById('totalSize').textContent = `${totalMB} MB`;
+
+                // Count unique pages
+                const pages = new Set(screenshots.map(s => s.path.split('/')[1] || 'main'));
+                document.getElementById('pageCount').textContent = pages.size;
+
+                // Hide loading, show content
+                document.getElementById('loadingState').classList.add('hidden');
+
+                if (screenshots.length === 0) {
+                    document.getElementById('emptyState').classList.remove('hidden');
+                } else {
+                    document.getElementById('screenshotGrid').classList.remove('hidden');
+                    renderScreenshots();
+                }
+
+            } catch (error) {
+                console.error('Failed to load screenshots:', error);
+                document.getElementById('loadingState').innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fas fa-exclamation-triangle text-6xl text-red-500 mb-4"></i>
+                        <p class="text-xl text-gray-600">Failed to load screenshots</p>
+                        <p class="text-sm text-gray-500 mt-2">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderScreenshots() {
+            const grid = document.getElementById('screenshotGrid');
+
+            grid.innerHTML = screenshots.map((screenshot, index) => {
+                const date = new Date(screenshot.modified * 1000);
+                const dateStr = date.toLocaleDateString();
+                const timeStr = date.toLocaleTimeString();
+                const sizeKB = (screenshot.size / 1024).toFixed(1);
+
+                return `
+                    <div class="screenshot-card bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                         onclick="openLightbox(${index})">
+                        <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
+                            <img src="${screenshot.url}"
+                                 alt="${screenshot.filename}"
+                                 class="w-full h-full object-cover"
+                                 loading="lazy">
+                        </div>
+                        <div class="p-4">
+                            <h3 class="font-semibold text-gray-900 truncate" title="${screenshot.filename}">
+                                ${screenshot.filename}
+                            </h3>
+                            <div class="mt-2 space-y-1 text-xs text-gray-600">
+                                <div class="flex items-center">
+                                    <i class="fas fa-calendar text-gray-400 mr-2 w-4"></i>
+                                    ${dateStr} ${timeStr}
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-hdd text-gray-400 mr-2 w-4"></i>
+                                    ${sizeKB} KB
+                                </div>
+                                ${screenshot.date ? `
+                                <div class="flex items-center">
+                                    <i class="fas fa-folder text-gray-400 mr-2 w-4"></i>
+                                    ${screenshot.date}
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openLightbox(index) {
+            const screenshot = screenshots[index];
+            const date = new Date(screenshot.modified * 1000);
+            const sizeKB = (screenshot.size / 1024).toFixed(1);
+
+            document.getElementById('lightboxImg').src = screenshot.url;
+            document.getElementById('lightboxFilename').textContent = screenshot.filename;
+            document.getElementById('lightboxDate').textContent = date.toLocaleString();
+            document.getElementById('lightboxSize').textContent = `${sizeKB} KB`;
+            document.getElementById('lightboxPath').textContent = screenshot.path;
+
+            document.getElementById('lightbox').classList.remove('hidden');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.add('hidden');
+        }
+
+        // Close lightbox with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeLightbox();
+            }
+        });
+
+        // Load screenshots on page load
+        loadScreenshots();
+    </script>
+</body>
+</html>

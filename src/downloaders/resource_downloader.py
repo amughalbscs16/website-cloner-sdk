@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class ResourceDownloader:
     """Handles downloading of web resources"""
 
-    def __init__(self, file_manager: FileManager, network_urls: Set[str] = None, max_workers: int = 10, event_emitter: Optional['EventEmitter'] = None):
+    def __init__(self, file_manager: FileManager, network_urls: Set[str] = None, max_workers: int = 10, event_emitter: Optional['EventEmitter'] = None, cancel_check=None):
         """
         Initialize resource downloader
 
@@ -28,6 +28,7 @@ class ResourceDownloader:
             network_urls: Set of URLs captured from network logs
             max_workers: Number of parallel download threads (default: 10)
             event_emitter: Optional event emitter for progress updates
+            cancel_check: Optional callable to check for cancellation
         """
         self.file_manager = file_manager
         self.network_urls = network_urls or set()
@@ -38,6 +39,7 @@ class ResourceDownloader:
         self.successful_downloads = []  # List of successfully downloaded URLs
         self.failed_downloads = []  # List of failed downloads with reasons
         self.event_emitter = event_emitter
+        self.cancel_check = cancel_check
 
     def download_with_requests(self, url: str, timeout: int = None) -> Optional[requests.Response]:
         """
@@ -103,17 +105,18 @@ class ResourceDownloader:
             logger.debug(f"Httpx failed for {url}: {e}")
             return None
 
-    def download_resource(self, url: str) -> Tuple[Optional[bytes], Optional[str]]:
+    def download_resource(self, url: str, max_retries: int = 3) -> Tuple[Optional[bytes], Optional[str]]:
         """
-        Download a resource with automatic fallback (1 attempt per method)
+        Download a resource with automatic fallback and retry logic
 
         Args:
             url: URL to download
+            max_retries: Maximum number of retry attempts per method (default: 3)
 
         Returns:
             Tuple of (Binary content or None, method name or None)
         """
-        # Try all three methods in order (no retries, just different methods)
+        # Try all three methods in order with retries
         methods = [
             ("requests", self.download_with_requests, lambda r: r.content),
             ("urllib3", self.download_with_urllib, lambda r: r.data),
@@ -121,17 +124,27 @@ class ResourceDownloader:
         ]
 
         for method_name, method_func, content_getter in methods:
-            try:
-                response = method_func(url)
-                if response:
-                    logger.debug(f"Downloaded via {method_name}: {url}")
-                    return content_getter(response), method_name
-            except Exception as e:
-                logger.debug(f"{method_name} failed for {url}: {e}")
-                continue
+            for attempt in range(max_retries):
+                try:
+                    response = method_func(url)
+                    if response:
+                        if attempt > 0:
+                            logger.debug(f"Downloaded via {method_name} (attempt {attempt + 1}): {url}")
+                        else:
+                            logger.debug(f"Downloaded via {method_name}: {url}")
+                        return content_getter(response), method_name
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        # Exponential backoff: 0.5s, 1s, 2s
+                        wait_time = 0.5 * (2 ** attempt)
+                        logger.debug(f"{method_name} attempt {attempt + 1} failed for {url}, retrying in {wait_time}s: {e}")
+                        time.sleep(wait_time)
+                    else:
+                        logger.debug(f"{method_name} failed after {max_retries} attempts for {url}: {e}")
+                    continue
 
-        # All methods failed
-        logger.warning(f"Failed to download (tried all methods): {url}")
+        # All methods and retries failed
+        logger.warning(f"Failed to download (tried all methods with {max_retries} retries each): {url}")
         return None, None
 
     def is_html_content(self, response) -> bool:
@@ -185,6 +198,10 @@ class ResourceDownloader:
         Returns:
             Local file path relative to project directory
         """
+        # Check for cancellation
+        if self.cancel_check:
+            self.cancel_check()
+
         # Skip empty or invalid URLs
         if not file_url or file_url.strip() in ("", " "):
             return file_url

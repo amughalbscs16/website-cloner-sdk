@@ -47,6 +47,30 @@ class ChromeDriverManager:
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
 
+        # Memory optimization options
+        options.add_argument("--disable-background-networking")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--disable-breakpad")
+        options.add_argument("--disable-component-extensions-with-background-pages")
+        options.add_argument("--disable-features=TranslateUI,BlinkGenPropertyTrees")
+        options.add_argument("--disable-ipc-flooding-protection")
+        options.add_argument("--disable-renderer-backgrounding")
+        options.add_argument("--enable-features=NetworkService,NetworkServiceInProcess")
+        options.add_argument("--force-color-profile=srgb")
+        options.add_argument("--metrics-recording-only")
+        options.add_argument("--mute-audio")
+
+        # Reduce memory footprint
+        options.add_argument("--disable-default-apps")
+        options.add_argument("--disable-sync")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
+
+        # Set process limits
+        options.add_argument("--renderer-process-limit=1")
+        options.add_argument("--single-process")  # Use single process mode to reduce memory
+
         # Set user agent
         options.add_argument(f"user-agent={config.USER_AGENT}")
 
@@ -134,9 +158,18 @@ class ChromeDriverManager:
             return []
 
     def close(self):
-        """Close the driver safely"""
+        """Close the driver safely and ensure all processes are terminated"""
         if self.driver:
             try:
+                # Try to close all windows first
+                try:
+                    for handle in self.driver.window_handles:
+                        self.driver.switch_to.window(handle)
+                        self.driver.close()
+                except:
+                    pass
+
+                # Quit the driver
                 self.driver.quit()
                 logger.info("Chrome driver closed")
             except Exception as e:
@@ -144,10 +177,16 @@ class ChromeDriverManager:
             finally:
                 self.driver = None
 
+        # Give processes time to terminate
+        import time
+        time.sleep(0.5)
+
         # Clean up user data directory
         if self.user_data_dir and self.user_data_dir.exists():
             try:
                 import shutil
+                # Wait a bit for Chrome to release file handles
+                time.sleep(0.5)
                 shutil.rmtree(self.user_data_dir, ignore_errors=True)
                 logger.debug(f"Cleaned up user data directory: {self.user_data_dir}")
             except Exception as e:
