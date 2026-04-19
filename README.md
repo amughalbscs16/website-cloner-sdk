@@ -1,4 +1,4 @@
-# WordPress Website Cloner v2.0
+# Website Cloner v2.0
 
 > **A professional Python library for cloning websites with all assets (HTML, CSS, JavaScript, images, fonts) - complete with a beautiful Web UI demo**
 
