@@ -551,24 +551,6 @@ For issues and questions:
 
 ---
 
-**Built with ❤️ for developers who need to clone websites**
-
----
-
-## 🆚 Why Choose This Over Alternatives?
-
-| Feature | This Project | HTTrack | Wget | Scrapy |
-|---------|--------------|---------|------|--------|
-| JavaScript Execution | ✅ | ❌ | ❌ | ❌ |
-| Python SDK | ✅ | ❌ | ❌ | ✅ (complex) |
-| Web UI | ✅ | ❌ | ❌ | ❌ |
-| Event System | ✅ | ❌ | ❌ | ❌ |
-| Auto ChromeDriver | ✅ | N/A | N/A | ❌ |
-| File Type Analytics | ✅ | ❌ | ❌ | ❌ |
-| Modern Tech Stack | ✅ | ❌ (outdated) | ❌ | ✅ |
-| Beginner Friendly | ✅ | ⚠️ | ❌ | ❌ |
-| Developer Friendly | ✅ | ❌ | ⚠️ | ✅ |
-
 **Perfect for:**
 - Developers building SaaS products
 - Agencies needing automated backups
