@@ -1,4 +1,4 @@
-"""WordPress Website Cloner SDK for developers"""
+"""Website Cloner SDK for developers"""
 
 from pathlib import Path
 from typing import Optional, Callable, Dict, Any
@@ -12,7 +12,7 @@ from .events.event_emitter import (
 
 class ClonerSDK:
     """
-    High-level SDK for WordPress Website Cloner
+    High-level SDK for Website Cloner
 
     This class provides a clean, developer-friendly interface for cloning websites
     with real-time progress updates and statistics tracking.
@@ -185,6 +185,38 @@ class ClonerSDK:
             The callback function (for chaining)
         """
         self.event_emitter.on(ClonerEvents.PAGE_LOADED, callback)
+        return callback
+
+    def on_framework_detected(self, callback: Callable) -> Callable:
+        """
+        Decorator: Subscribe to framework detection event
+
+        Fired after page load with the detected frameworks/technologies.
+        The event data has `.frameworks` (list of dicts) and `.primary`.
+
+        Args:
+            callback: Function to call when frameworks are detected
+
+        Returns:
+            The callback function (for chaining)
+        """
+        self.event_emitter.on(ClonerEvents.FRAMEWORK_DETECTED, callback)
+        return callback
+
+    def on_cdp_capture_complete(self, callback: Callable[[StatsData], None]) -> Callable:
+        """
+        Decorator: Subscribe to CDP capture complete event
+
+        Fired after response bodies are harvested from the browser;
+        total_resources carries the number of bodies captured in-browser.
+
+        Args:
+            callback: Function to call when CDP harvest completes
+
+        Returns:
+            The callback function (for chaining)
+        """
+        self.event_emitter.on(ClonerEvents.CDP_CAPTURE_COMPLETE, callback)
         return callback
 
     def on_network_logs_extracted(self, callback: Callable[[StatsData], None]) -> Callable:

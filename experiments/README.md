@@ -7,8 +7,6 @@ This directory contains all experimental infrastructure for validating and impro
 ```
 experiments/
 ├── README.md                    # This file
-├── RESEARCH_PLAN.md            # Full research-grade experimental framework
-├── IMPLEMENTATION_SPEC.md      # Detailed implementation specifications
 ├── test_sites.py               # Centralized database of 20 test websites
 ├── experiment_engine.py        # Core ExperimentRunner class
 ├── results_storage.py          # Results management and analysis
@@ -157,14 +155,13 @@ easy_sites = get_sites_by_difficulty("easy")
 
 ## 📈 Research Framework
 
-See `RESEARCH_PLAN.md` for full details on:
+Planned (not yet implemented):
 
-- **5 Research Questions** with rigorous experimental design
-- **Multi-dimensional quality metrics** (5D assessment framework)
+- **Competitive benchmarking** (vs HTTrack, Wget, Browsertrix Crawler) with an
+  external reference oracle, so completeness is measured as true recall rather
+  than the self-referential download-completion rate
 - **Statistical analysis** (t-tests, ANOVA, effect sizes)
-- **Competitive benchmarking** (vs HTTrack, Wget, etc.)
-- **Ablation studies** (component importance)
-- **Scalability analysis** (performance vs complexity)
+- **Importance-weighted quality scoring** (per the memento-damage literature)
 
 ## 🎯 What to Run Right Now
 
@@ -180,7 +177,7 @@ python experiments/demo_benchmark.py
 ```
 
 **For research-grade experiments:**
-See `RESEARCH_PLAN.md` and implement the experiments incrementally.
+See the "Research Framework" section above — these are being implemented incrementally.
 
 ## 💡 Adding New Test Sites
 
@@ -215,8 +212,6 @@ All experiment results are saved to:
 - ✅ Test sites database (20 sites across 6 tiers)
 - ✅ CLI tools (simple demo, benchmark runner, comparison)
 - ✅ Documentation and usage examples
-
-See `PHASE1_COMPLETE.md` for full details.
 
 ### Phase 2: Advanced Features ⏳ NEXT
 - Statistical analysis (t-tests, ANOVA, effect sizes)

@@ -45,7 +45,7 @@ class TestResourceDownloader:
         assert not downloader.should_download_from_network("missing.jpg", "https://example.com/missing.jpg")
 
     def test_cancel_check_integration(self):
-        """Test that cancel check is called during download"""
+        """Cancellation raised by cancel_check must propagate out of download_file"""
         fm = FileManager(Path("."))
         cancel_called = False
 
@@ -56,9 +56,7 @@ class TestResourceDownloader:
 
         downloader = ResourceDownloader(fm, cancel_check=mock_cancel_check)
 
-        # Attempting to download should trigger cancellation
-        result = downloader.download_file("https://example.com", "test.jpg", Path("."))
+        with pytest.raises(InterruptedError):
+            downloader.download_file("https://example.com", "test.jpg", Path("."))
 
-        # Cancel check should have been called (and raised exception internally)
-        # Result should be the original URL since download was cancelled/failed
-        assert cancel_called or result == "test.jpg"
+        assert cancel_called

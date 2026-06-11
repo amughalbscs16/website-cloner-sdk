@@ -9,7 +9,10 @@ class URLUtils:
 
     @staticmethod
     def clean_url(url: str) -> str:
-        """Remove trailing slashes from URL"""
+        """Normalize a user-supplied URL: strip whitespace, default to https, drop trailing slashes"""
+        url = url.strip()
+        if url and not url.startswith(('http://', 'https://')):
+            url = f"https://{url}"
         while url.endswith('/'):
             url = url[:-1]
         return url
@@ -29,9 +32,10 @@ class URLUtils:
         if not resource_url or resource_url.strip() in ("", " "):
             return resource_url
 
-        # Handle protocol-relative URLs
+        # Handle protocol-relative URLs: inherit the base URL's scheme
         if resource_url.startswith("//"):
-            return f"http:{resource_url}"
+            base_scheme = urlparse(base_url).scheme or "https"
+            return f"{base_scheme}:{resource_url}"
 
         # Already absolute URL
         if resource_url.startswith(('http://', 'https://')):
@@ -58,6 +62,11 @@ class URLUtils:
         """Extract domain from URL"""
         parsed = urlparse(url)
         return f"{parsed.scheme}://{parsed.netloc}"
+
+    @staticmethod
+    def is_external_url(base_url: str, url: str) -> bool:
+        """Check whether url points to a different host than base_url"""
+        return urlparse(url).netloc != urlparse(base_url).netloc
 
     @staticmethod
     def is_valid_resource_url(url: str, allowed_extensions: tuple) -> bool:

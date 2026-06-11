@@ -11,6 +11,7 @@ from .utils.logger import logger
 from .utils.url_utils import URLUtils
 from .utils.file_utils import FileManager
 from .drivers.chrome_driver import ChromeDriverManager
+from .drivers.cdp_capture import harvest_captured_resources
 from .downloaders.resource_downloader import ResourceDownloader
 from .downloaders.css_downloader import CSSAssetDownloader
 from .parsers.html_parser import HTMLParser
@@ -18,7 +19,7 @@ from .monitors.screenshot_monitor import ScreenshotMonitor
 from .events import EventEmitter, ClonerEvents
 from .events.event_emitter import (
     CloneStartData, CloneCompleteData, CloneErrorData,
-    ProgressData, StatsData
+    ProgressData, StatsData, FrameworkData
 )
 
 
@@ -130,7 +131,7 @@ class WebsiteCloner:
 
         # Setup file manager
         file_manager = FileManager(config.PROJECT_DIR)
-        project_path = file_manager.create_project_directory(url)
+        project_path = file_manager.create_project_directory(url, fresh=True)
 
         # Initialize driver
         self.driver_manager = ChromeDriverManager(self.headless)
@@ -146,7 +147,35 @@ class WebsiteCloner:
             ))
             logger.info("Loading page...")
             driver.get(url)
-            time.sleep(config.PAGE_LOAD_WAIT)
+
+            # Enlarge the resource-timing buffer so idle detection keeps
+            # counting on resource-heavy pages (default caps at 250 entries)
+            try:
+                driver.execute_script("performance.setResourceTimingBufferSize(10000)")
+            except Exception:
+                pass
+
+            went_idle = self.driver_manager.wait_for_page_idle(
+                driver,
+                idle_ms=config.NETWORK_IDLE_MS,
+                timeout=config.PAGE_IDLE_TIMEOUT,
+            )
+            if not went_idle:
+                # Idle detection unavailable or page never settled: fixed wait
+                time.sleep(config.PAGE_LOAD_WAIT)
+
+            # Trigger lazy-loaded content (images, infinite scroll segments)
+            if config.AUTO_SCROLL and not content_selector:
+                self.event_emitter.emit(ClonerEvents.PROGRESS_UPDATE, ProgressData(
+                    stage="auto_scroll",
+                    message="Scrolling to trigger lazy-loaded content...",
+                    percentage=15.0
+                ))
+                logger.info("Auto-scrolling to trigger lazy-loaded content...")
+                self.driver_manager.auto_scroll(driver)
+                self.driver_manager.wait_for_page_idle(
+                    driver, idle_ms=config.NETWORK_IDLE_MS, timeout=5.0
+                )
 
             # Get page source (extract specific content if selector provided)
             self._check_cancellation()
@@ -176,13 +205,39 @@ class WebsiteCloner:
 </html>"""
                 logger.info(f"Content extracted successfully using {selector_type} selector")
             else:
+                # Serialize CSS-in-JS rules (styled-components/emotion/styled-jsx)
+                # from the CSSOM into their <style> elements before snapshotting,
+                # otherwise page_source captures them empty and the clone is unstyled
+                self.driver_manager.inline_runtime_styles(driver)
                 page_source = driver.page_source
+
+                # Static-snapshot mode: drop scripts so re-hydration can't wipe
+                # the captured, styled DOM when the clone is reopened
+                if config.STATIC_SNAPSHOT:
+                    page_source = self.driver_manager.neutralize_scripts(page_source)
 
             self.event_emitter.emit(ClonerEvents.PAGE_LOADED, ProgressData(
                 stage="loaded",
                 message="Page loaded successfully",
                 percentage=20.0
             ))
+
+            # Detect the site's frameworks from the live page (markup + JS globals)
+            detected_frameworks = []
+            if not content_selector:
+                try:
+                    from .discovery import FrameworkDetector
+                    detector = FrameworkDetector()
+                    matches = detector.detect(
+                        driver.page_source, url, js_eval=driver.execute_script
+                    )
+                    detected_frameworks = [m.to_dict() for m in matches]
+                    self.event_emitter.emit(ClonerEvents.FRAMEWORK_DETECTED, FrameworkData(
+                        frameworks=detected_frameworks,
+                        primary=matches[0].name if matches else None,
+                    ))
+                except Exception as e:
+                    logger.debug(f"Framework detection failed: {e}")
 
             # Capture screenshot if enabled (only when NOT using selective content mode)
             if config.ENABLE_SCREENSHOTS and not content_selector:
@@ -203,17 +258,24 @@ class WebsiteCloner:
             elif content_selector:
                 logger.info("Selective content mode: skipping full page screenshot")
 
-            # Extract network URLs (skip if using selective content mode - we'll parse from HTML instead)
+            # Harvest network activity and response bodies via CDP
+            # (skip if using selective content mode - we'll parse from HTML instead)
             self._check_cancellation()
+            captured_resources = {}
             if not content_selector:
                 self.event_emitter.emit(ClonerEvents.PROGRESS_UPDATE, ProgressData(
                     stage="network_extraction",
-                    message="Extracting network logs...",
+                    message="Harvesting browser network capture...",
                     percentage=25.0
                 ))
-                logger.info("Extracting network logs...")
-                network_urls = set(self.driver_manager.get_network_logs(driver))
-                logger.info(f"Found {len(network_urls)} network requests")
+                logger.info("Harvesting network activity and response bodies via CDP...")
+                network_urls, captured_resources = harvest_captured_resources(
+                    self.driver_manager, driver
+                )
+                logger.info(
+                    f"Found {len(network_urls)} network requests, "
+                    f"{len(captured_resources)} bodies captured in-browser"
+                )
             else:
                 # In selective content mode, we'll extract resources from the HTML directly
                 logger.info("Selective content mode: skipping network log extraction (will parse from HTML)")
@@ -221,6 +283,13 @@ class WebsiteCloner:
 
             self.event_emitter.emit(ClonerEvents.NETWORK_LOGS_EXTRACTED, StatsData(
                 total_resources=len(network_urls),
+                successful_downloads=0,
+                failed_downloads=0,
+                skipped_downloads=0,
+                in_progress=0
+            ))
+            self.event_emitter.emit(ClonerEvents.CDP_CAPTURE_COMPLETE, StatsData(
+                total_resources=len(captured_resources),
                 successful_downloads=0,
                 failed_downloads=0,
                 skipped_downloads=0,
@@ -235,7 +304,8 @@ class WebsiteCloner:
                 network_urls,
                 max_workers=config.MAX_WORKERS,
                 event_emitter=self.event_emitter,
-                cancel_check=self._check_cancellation
+                cancel_check=self._check_cancellation,
+                captured_resources=captured_resources
             )
             css_downloader = CSSAssetDownloader(file_manager, resource_downloader)
             html_parser = HTMLParser(resource_downloader)
@@ -268,7 +338,7 @@ class WebsiteCloner:
                 percentage=75.0
             ))
             logger.info("Processing CSS files for internal assets...")
-            self._process_css_files(project_path, css_downloader)
+            self._process_css_files(project_path, css_downloader, file_manager, url)
 
             self.event_emitter.emit(ClonerEvents.CSS_PROCESSING_COMPLETE, ProgressData(
                 stage="css_complete",
@@ -282,8 +352,27 @@ class WebsiteCloner:
             logger.info(f"Output directory: {project_path}")
             logger.info(f"Download statistics: {stats['success']} succeeded | {stats['failed']} failed | {stats['skipped']} skipped")
 
+            # Export standards-compliant WARC from the browser-captured bodies
+            if config.EXPORT_WARC and captured_resources:
+                self.event_emitter.emit(ClonerEvents.PROGRESS_UPDATE, ProgressData(
+                    stage="warc_export",
+                    message="Writing WARC archive...",
+                    percentage=92.0
+                ))
+                from .exporters.warc_exporter import WarcExporter
+                warc_path = WarcExporter().export(project_path, url, captured_resources)
+
+                if warc_path and config.EXPORT_WACZ:
+                    self.event_emitter.emit(ClonerEvents.PROGRESS_UPDATE, ProgressData(
+                        stage="wacz_export",
+                        message="Packaging WACZ archive...",
+                        percentage=94.0
+                    ))
+                    from .exporters.wacz_exporter import WaczExporter
+                    WaczExporter().export(warc_path, url)
+
             # Generate download manifest
-            self._generate_manifest(project_path, url, resource_downloader)
+            self._generate_manifest(project_path, url, resource_downloader, detected_frameworks)
 
             # Calculate duration
             duration = (datetime.now() - self._start_time).total_seconds()
@@ -323,32 +412,47 @@ class WebsiteCloner:
             if self.driver_manager:
                 self.driver_manager.close()
 
-    def _process_css_files(self, project_path: Path, css_downloader: CSSAssetDownloader) -> None:
+    def _process_css_files(
+        self,
+        project_path: Path,
+        css_downloader: CSSAssetDownloader,
+        file_manager: FileManager,
+        page_url: str,
+    ) -> None:
         """
         Process all CSS files in project to extract url() assets
 
         Args:
             project_path: Project directory
             css_downloader: CSSAssetDownloader instance
+            file_manager: FileManager holding the URL -> local path download cache
+            page_url: URL of the cloned page (fallback base for unmatched files)
         """
         css_files = list(project_path.rglob("*.css"))
         logger.info(f"Found {len(css_files)} CSS files to process")
 
+        # Recover each CSS file's original URL so url() references inside it
+        # resolve against the real host, not a local file path
+        url_by_local_path = {
+            local: original for original, local in file_manager.link_file.items()
+        }
+
         for css_file in css_files:
             try:
-                # Construct the original URL for this CSS file
-                relative_path = css_file.relative_to(project_path)
-                # This is a simplified approach - in production, you'd track the original URL
-                css_url = str(relative_path)
+                relative_path = str(css_file.relative_to(project_path)).replace("\\", "/")
+                css_url = url_by_local_path.get(relative_path)
+                if not css_url:
+                    css_url = URLUtils.normalize_url(page_url, relative_path)
+                    logger.debug(f"No origin URL tracked for {relative_path}, assuming {css_url}")
 
-                logger.debug(f"Processing CSS: {css_file}")
+                logger.debug(f"Processing CSS: {css_file} (origin: {css_url})")
                 css_downloader.extract_and_download_css_assets(
                     project_path, css_file, css_url
                 )
             except Exception as e:
                 logger.warning(f"Error processing CSS file {css_file}: {e}")
 
-    def _generate_manifest(self, project_path: Path, url: str, resource_downloader: ResourceDownloader) -> None:
+    def _generate_manifest(self, project_path: Path, url: str, resource_downloader: ResourceDownloader, frameworks: list = None) -> None:
         """
         Generate download manifest with success/failure tracking
 
@@ -363,7 +467,9 @@ class WebsiteCloner:
             manifest_data = {
                 "timestamp": datetime.now().isoformat(),
                 "url": url,
+                "frameworks": frameworks or [],
                 "statistics": resource_downloader.download_stats,
+                "capture_methods": resource_downloader.capture_method_stats,
                 "successful_downloads": resource_downloader.successful_downloads,
                 "failed_downloads": resource_downloader.failed_downloads
             }

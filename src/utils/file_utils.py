@@ -32,10 +32,36 @@ class FileManager:
             filename = filename.replace(char, '')
         return filename
 
-    def create_project_directory(self, url: str) -> Path:
-        """Create and return project directory for a URL"""
+    def create_project_directory(self, url: str, fresh: bool = False) -> Path:
+        """
+        Create and return project directory for a URL
+
+        Args:
+            url: Website URL the directory is for
+            fresh: When True, remove artifacts from previous clones so the
+                directory holds exactly one snapshot. The screenshots/
+                subdirectory is preserved (it accumulates monitoring history).
+        """
         folder = self.get_project_folder(url)
         path = self.base_path / folder
+
+        if fresh and path.exists():
+            import shutil
+            removed = 0
+            for child in path.iterdir():
+                if child.name == "screenshots":
+                    continue
+                try:
+                    if child.is_dir():
+                        shutil.rmtree(child)
+                    else:
+                        child.unlink()
+                    removed += 1
+                except Exception as e:
+                    logger.warning(f"Could not remove stale {child}: {e}")
+            if removed:
+                logger.info(f"Cleared {removed} stale entries from previous clone")
+
         path.mkdir(parents=True, exist_ok=True)
         logger.info(f"Project directory: {path}")
         return path
@@ -110,7 +136,7 @@ class FileManager:
         else:
             file_path = directory / base_name
 
-        while str(file_path) in self.files_dict:
+        while str(file_path) in self.files_dict or file_path.exists():
             counter += 1
             if extension:
                 file_path = directory / f"{base_name}{counter}.{extension}"

@@ -13,7 +13,7 @@ from .config import config
 def create_parser():
     """Create argument parser with subcommands"""
     parser = argparse.ArgumentParser(
-        description="WordPress Website Cloner - Clone and monitor websites",
+        description="Website Cloner - Clone and monitor websites",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 

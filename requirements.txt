@@ -1,6 +1,7 @@
 # Core dependencies
 selenium>=4.25.0
 webdriver-manager>=4.0.2
+truststore>=0.9                 # OS trust store for TLS (AV/proxy-inspected machines)
 beautifulsoup4>=4.12.3
 requests>=2.32.3
 urllib3>=2.2.3
@@ -21,6 +22,11 @@ python-dotenv>=1.0.1
 
 # HTML/XML parsing
 lxml>=5.3.0
+
+# Archive formats
+warcio>=1.7.4
+wacz>=0.5.0                     # WACZ packaging (ReplayWeb.page-loadable)
+setuptools<81                   # pkg_resources shim required by py-wacz
 
 # Data validation
 pydantic>=2.10.4

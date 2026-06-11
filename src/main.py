@@ -11,7 +11,7 @@ from .config import config
 def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
-        description="WordPress Website Cloner - Clone websites locally with all assets",
+        description="Website Cloner - Clone websites locally with all assets",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

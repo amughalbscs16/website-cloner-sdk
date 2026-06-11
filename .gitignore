@@ -85,7 +85,11 @@ SDK_DOCUMENTATION.md
 SETUP_SUMMARY.txt
 test_sdk.py
 
-# Documentation (keep only essential ones in repo)
-*.md
-!README.md
-!LICENSE.md
+experiments/results/
+replay_test/
+paper/ital_samples/
+paper/*.docx
+
+# Paper materials (kept local; not part of the software artifact)
+paper/
+experiments/COMPARISON.md

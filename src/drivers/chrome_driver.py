@@ -1,10 +1,11 @@
 """Modern Chrome driver setup with automatic driver management"""
 
+import base64
 import json
 import tempfile
 import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -67,10 +68,6 @@ class ChromeDriverManager:
         options.add_argument("--no-first-run")
         options.add_argument("--no-default-browser-check")
 
-        # Set process limits
-        options.add_argument("--renderer-process-limit=1")
-        options.add_argument("--single-process")  # Use single process mode to reduce memory
-
         # Set user agent
         options.add_argument(f"user-agent={config.USER_AGENT}")
 
@@ -113,6 +110,10 @@ class ChromeDriverManager:
                 },
             )
 
+            # Enlarge the DevTools response-body buffers so bodies survive until
+            # we harvest them after page load (CDP evicts bodies under memory pressure)
+            self.enable_network_capture(driver)
+
             self.driver = driver
             logger.info("Chrome driver initialized successfully")
             return driver
@@ -120,6 +121,240 @@ class ChromeDriverManager:
         except Exception as e:
             logger.error(f"Failed to create Chrome driver: {e}")
             raise
+
+    def wait_for_page_idle(
+        self,
+        driver: webdriver.Chrome = None,
+        idle_ms: int = 1500,
+        timeout: float = 20.0,
+        poll_interval: float = 0.25,
+    ) -> bool:
+        """
+        Wait until the page looks finished: document complete and no new
+        resources for idle_ms. Polls the Resource Timing API instead of the
+        performance log because get_log() drains the buffer the CDP harvest
+        needs afterwards.
+
+        Returns:
+            True if the page went idle, False if the timeout was hit
+        """
+        import time as _time
+
+        driver = driver or self.driver
+        deadline = _time.time() + timeout
+        last_count = -1
+        stable_since = _time.time()
+
+        while _time.time() < deadline:
+            try:
+                state = driver.execute_script("return document.readyState")
+                count = driver.execute_script(
+                    "return performance.getEntriesByType('resource').length"
+                )
+            except Exception as e:
+                logger.debug(f"Idle polling failed, falling back to fixed wait: {e}")
+                return False
+
+            if count != last_count:
+                last_count = count
+                stable_since = _time.time()
+            elif state == "complete" and (_time.time() - stable_since) * 1000 >= idle_ms:
+                logger.debug(f"Page idle after {count} resources")
+                return True
+
+            _time.sleep(poll_interval)
+
+        logger.debug(f"Page idle timeout ({timeout}s) reached with {last_count} resources")
+        return False
+
+    def auto_scroll(
+        self,
+        driver: webdriver.Chrome = None,
+        step_delay: float = 0.3,
+        max_steps: int = 30,
+    ) -> None:
+        """
+        Scroll viewport-by-viewport to the bottom to trigger lazy loading,
+        then return to the top so screenshots and layout are unaffected.
+        """
+        import time as _time
+
+        driver = driver or self.driver
+        last_height = -1
+
+        try:
+            for _ in range(max_steps):
+                height = driver.execute_script(
+                    "return document.body ? document.body.scrollHeight : 0"
+                )
+                position = driver.execute_script(
+                    "return window.scrollY + window.innerHeight"
+                )
+                if position >= height and height == last_height:
+                    break
+                last_height = height
+                driver.execute_script("window.scrollBy(0, window.innerHeight);")
+                _time.sleep(step_delay)
+
+            driver.execute_script("window.scrollTo(0, 0);")
+        except Exception as e:
+            logger.debug(f"Auto-scroll aborted: {e}")
+
+    def inline_runtime_styles(self, driver: webdriver.Chrome = None) -> int:
+        """
+        Serialize CSS-in-JS rules from the CSSOM back into their <style> elements.
+
+        Frameworks like styled-components, emotion and styled-jsx inject CSS via
+        the CSSOM (document.styleSheets[*].insertRule), leaving the <style>
+        element's text content empty. driver.page_source serializes that empty
+        element, so the saved clone loses all such styling. This reads the live
+        rules and writes them back as text so the static HTML renders correctly.
+
+        Returns:
+            Number of <style> elements populated.
+        """
+        driver = driver or self.driver
+        script = r"""
+        let filled = 0;
+        for (const sheet of Array.from(document.styleSheets)) {
+            const node = sheet.ownerNode;
+            // Only target <style> elements that are empty but hold live rules
+            if (!node || node.tagName !== 'STYLE') continue;
+            if (node.textContent && node.textContent.trim().length > 0) continue;
+            let rules;
+            try { rules = sheet.cssRules; } catch (e) { continue; }  // cross-origin
+            if (!rules || rules.length === 0) continue;
+            let css = '';
+            for (const rule of Array.from(rules)) css += rule.cssText + '\n';
+            if (css) { node.textContent = css; filled++; }
+        }
+        return filled;
+        """
+        try:
+            filled = driver.execute_script(script)
+            if filled:
+                logger.info(f"Inlined {filled} runtime (CSS-in-JS) style blocks")
+            return filled or 0
+        except Exception as e:
+            logger.warning(f"Could not inline runtime styles: {e}")
+            return 0
+
+    def neutralize_scripts(self, html: str) -> str:
+        """
+        Remove <script> tags from captured HTML for a static snapshot.
+
+        Re-running a page's JavaScript from a saved copy often re-hydrates and
+        destroys the captured DOM (React/Next.js), or fails on absent APIs.
+        Removing scripts preserves the rendered, styled DOM as captured. Used
+        in static-snapshot mode.
+        """
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
+        removed = 0
+        for tag in soup.find_all("script"):
+            tag.decompose()
+            removed += 1
+        logger.info(f"Neutralized {removed} script tags (static snapshot mode)")
+        return str(soup)
+
+    def enable_network_capture(
+        self,
+        driver: webdriver.Chrome = None,
+        max_total_mb: int = 256,
+        max_resource_mb: int = 64,
+    ) -> None:
+        """
+        Enable CDP Network domain with enlarged body buffers.
+
+        Must run before navigation so response bodies are buffered for
+        get_response_body(). Defaults give 256 MB total / 64 MB per resource.
+        """
+        driver = driver or self.driver
+        try:
+            driver.execute_cdp_cmd("Network.enable", {
+                "maxTotalBufferSize": max_total_mb * 1024 * 1024,
+                "maxResourceBufferSize": max_resource_mb * 1024 * 1024,
+            })
+            logger.debug("CDP network capture enabled with enlarged buffers")
+        except Exception as e:
+            logger.warning(f"Could not enable CDP network capture: {e}")
+
+    def harvest_network(self, driver: webdriver.Chrome = None) -> Tuple[Set[str], Dict[str, Dict]]:
+        """
+        Parse the performance log once, returning both views of network activity.
+
+        NOTE: get_log("performance") drains the log buffer, so this and
+        get_network_logs() must not both be called for the same page load.
+
+        Returns:
+            Tuple of:
+            - set of all requested URLs (from Network.requestWillBeSent)
+            - dict url -> response metadata {request_id, status, headers,
+              mime_type, resource_type} (from Network.responseReceived)
+        """
+        driver = driver or self.driver
+        urls: Set[str] = set()
+        responses: Dict[str, Dict] = {}
+
+        if not driver:
+            logger.warning("No driver available for network harvest")
+            return urls, responses
+
+        try:
+            browser_log = driver.get_log("performance")
+        except Exception as e:
+            logger.error(f"Failed to read performance log: {e}")
+            return urls, responses
+
+        for entry in browser_log:
+            try:
+                message = json.loads(entry["message"])["message"]
+                method = message.get("method", "")
+                params = message.get("params", {})
+
+                if method == "Network.requestWillBeSent":
+                    url = params.get("request", {}).get("url")
+                    if url:
+                        urls.add(url)
+                elif method == "Network.responseReceived":
+                    response = params.get("response", {})
+                    url = response.get("url")
+                    if url and url.startswith(("http://", "https://")):
+                        responses[url] = {
+                            "request_id": params.get("requestId"),
+                            "status": response.get("status"),
+                            "headers": response.get("headers", {}),
+                            "mime_type": response.get("mimeType", ""),
+                            "resource_type": params.get("type", ""),
+                        }
+            except (json.JSONDecodeError, KeyError):
+                continue
+
+        logger.debug(f"Harvested {len(urls)} request URLs, {len(responses)} responses")
+        return urls, responses
+
+    def get_response_body(self, request_id: str, driver: webdriver.Chrome = None) -> Optional[bytes]:
+        """
+        Fetch the body the browser actually received for a request via CDP.
+
+        Returns None when the body was evicted from the DevTools buffer or the
+        request had no body (redirects, 204s, preflights) — callers fall back
+        to re-fetching over HTTP.
+        """
+        driver = driver or self.driver
+        if not driver or not request_id:
+            return None
+
+        try:
+            result = driver.execute_cdp_cmd(
+                "Network.getResponseBody", {"requestId": request_id}
+            )
+            body = result.get("body", "")
+            if result.get("base64Encoded"):
+                return base64.b64decode(body)
+            return body.encode("utf-8")
+        except Exception:
+            return None
 
     def get_network_logs(self, driver: webdriver.Chrome = None) -> List[str]:
         """

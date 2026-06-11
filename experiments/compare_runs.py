@@ -66,7 +66,7 @@ def compare_runs(storage: ResultsStorage, file1: str, file2: str):
     print(f"   Experiments: {run1['stats']['count']}")
     print(f"   Successful: {run1['stats']['successful']}")
     print(f"   Avg Duration: {run1['stats']['avg_duration']:.1f}s")
-    print(f"   Avg Success Rate: {run1['stats']['avg_success_rate']:.1f}%")
+    print(f"   Avg Download Completion: {run1['stats']['avg_download_completion_rate']:.1f}%")
     print(f"   Total Size: {run1['stats']['total_size_mb']:.2f} MB")
 
     print()
@@ -76,7 +76,7 @@ def compare_runs(storage: ResultsStorage, file1: str, file2: str):
     print(f"   Experiments: {run2['stats']['count']}")
     print(f"   Successful: {run2['stats']['successful']}")
     print(f"   Avg Duration: {run2['stats']['avg_duration']:.1f}s")
-    print(f"   Avg Success Rate: {run2['stats']['avg_success_rate']:.1f}%")
+    print(f"   Avg Download Completion: {run2['stats']['avg_download_completion_rate']:.1f}%")
     print(f"   Total Size: {run2['stats']['total_size_mb']:.2f} MB")
 
     print()
@@ -89,10 +89,10 @@ def compare_runs(storage: ResultsStorage, file1: str, file2: str):
     duration_indicator = "FASTER" if duration_change < 0 else "SLOWER" if duration_change > 0 else "SAME"
     print(f"   Duration: {duration_change:+.1f}s ({duration_pct:+.1f}%) - {duration_indicator}")
 
-    # Success rate change
-    success_change = comp['success_rate_change']
+    # Download completion change
+    success_change = comp['download_completion_rate_change']
     success_indicator = "BETTER" if success_change > 0 else "WORSE" if success_change < 0 else "SAME"
-    print(f"   Success Rate: {success_change:+.1f}% - {success_indicator}")
+    print(f"   Download Completion: {success_change:+.1f}% - {success_indicator}")
 
     # Size change
     size_change = comp['size_change_mb']

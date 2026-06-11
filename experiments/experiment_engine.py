@@ -42,7 +42,11 @@ class ExperimentResult:
     total_resources: int = 0
     successful_downloads: int = 0
     failed_downloads: int = 0
-    success_rate: float = 0.0
+    # Fraction of *discovered* resources that downloaded successfully.
+    # NOT a completeness/recall metric: resources the cloner never discovered
+    # (lazy-loaded, interaction-gated) are invisible to it. True recall requires
+    # an external reference capture (e.g. Browsertrix) as oracle.
+    download_completion_rate: float = 0.0
 
     # File analysis
     output_path: Optional[str] = None
@@ -190,7 +194,7 @@ class ExperimentRunner:
             result.total_resources = metrics['total']
             result.successful_downloads = metrics['success']
             result.failed_downloads = metrics['failed']
-            result.success_rate = (metrics['success'] / metrics['total'] * 100) if metrics['total'] > 0 else 0.0
+            result.download_completion_rate = (metrics['success'] / metrics['total'] * 100) if metrics['total'] > 0 else 0.0
             result.output_path = str(output_path) if output_path else None
             result.output_size_mb = output_size_mb
             result.file_types = metrics['file_types']
@@ -211,7 +215,7 @@ class ExperimentRunner:
             if self.verbose:
                 print(f"\n Results:")
                 print(f"   Duration:     {result.duration_seconds:.1f}s")
-                print(f"   Success Rate: {result.success_rate:.1f}%")
+                print(f"   Download Completion: {result.download_completion_rate:.1f}% (of discovered resources)")
                 print(f"   Assets:       {result.successful_downloads}/{result.total_resources}")
                 print(f"   Failed:       {result.failed_downloads}")
                 print(f"   Output Size:  {result.output_size_mb:.2f} MB")
@@ -327,7 +331,7 @@ class ExperimentRunner:
         successful = [r for r in results if r.success]
         if successful:
             avg_duration = sum(r.duration_seconds for r in successful) / len(successful)
-            avg_success_rate = sum(r.success_rate for r in successful) / len(successful)
+            avg_completion_rate = sum(r.download_completion_rate for r in successful) / len(successful)
             total_size = sum(r.output_size_mb for r in successful)
 
             print(f"\n Statistics:")
@@ -335,7 +339,7 @@ class ExperimentRunner:
             print(f"   Successful:           {len(successful)}")
             print(f"   Failed:               {len(results) - len(successful)}")
             print(f"   Avg Duration:         {avg_duration:.1f}s")
-            print(f"   Avg Success Rate:     {avg_success_rate:.1f}%")
+            print(f"   Avg Download Completion: {avg_completion_rate:.1f}%")
             print(f"   Total Output Size:    {total_size:.2f} MB")
 
         print(f"\n{'='*70}\n")

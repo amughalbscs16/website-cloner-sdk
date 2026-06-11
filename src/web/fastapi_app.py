@@ -1,4 +1,4 @@
-"""FastAPI Web UI for WordPress Cloner"""
+"""FastAPI Web UI for Website Cloner"""
 
 import asyncio
 import base64
@@ -171,7 +171,7 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
 
     app = FastAPI(
-        title="WordPress Website Cloner",
+        title="Website Cloner",
         description="Clone any website with all its assets",
         version="2.0.0",
     )
@@ -184,7 +184,8 @@ def create_app() -> FastAPI:
     # Setup Jinja2 templates
     templates = Jinja2Templates(directory=str(templates_dir))
 
-    # Mount static files
+    # Mount static files (git does not track empty dirs, so ensure it exists)
+    static_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     # Mount cloned projects directory
@@ -199,16 +200,14 @@ def create_app() -> FastAPI:
     async def index(request: Request):
         """Main page with cloning interface"""
         return templates.TemplateResponse(
-            "index.html",
-            {"request": request, "title": "WordPress Cloner"}
+            request, "index.html", {"title": "Website Cloner"}
         )
 
     @app.get("/discover", response_class=HTMLResponse)
     async def discover(request: Request):
         """WordPress site discovery and analysis page"""
         return templates.TemplateResponse(
-            "discover.html",
-            {"request": request, "title": "Site Discovery"}
+            request, "discover.html", {"title": "Site Discovery"}
         )
 
     @app.get("/health")
@@ -507,12 +506,9 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="Project not found")
 
         return templates.TemplateResponse(
+            request,
             "browser.html",
-            {
-                "request": request,
-                "project_name": project_name,
-                "title": "File Browser"
-            }
+            {"project_name": project_name, "title": "File Browser"}
         )
 
     @app.get("/screenshots/{project_name}")
@@ -523,12 +519,9 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="Project not found")
 
         return templates.TemplateResponse(
+            request,
             "screenshots.html",
-            {
-                "request": request,
-                "project_name": project_name,
-                "title": "Screenshot Gallery"
-            }
+            {"project_name": project_name, "title": "Screenshot Gallery"}
         )
 
     @app.get("/api/files/{project_name}")

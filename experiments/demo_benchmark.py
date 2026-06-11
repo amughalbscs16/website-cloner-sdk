@@ -137,7 +137,7 @@ class DemoBenchmark:
             # Calculate metrics
             result["success"] = True
             result["metrics"] = metrics
-            result["success_rate"] = (
+            result["download_completion_rate"] = (
                 metrics["successful_downloads"] / metrics["total_resources"]
                 if metrics["total_resources"] > 0 else 0
             )
@@ -164,7 +164,7 @@ class DemoBenchmark:
 
         print(f"\n📊 Results:")
         print(f"  ⏱️  Duration: {result['duration_seconds']:.1f}s")
-        print(f"  ✅ Success Rate: {result['success_rate']*100:.1f}%")
+        print(f"  ✅ Download Completion: {result['download_completion_rate']*100:.1f}%")
         print(f"  📦 Assets: {metrics['successful_downloads']}/{metrics['total_resources']}")
         print(f"  ❌ Failed: {metrics['failed_downloads']}")
         print(f"  💾 Size: {result['output_size_mb']:.2f} MB")
@@ -213,7 +213,7 @@ class DemoBenchmark:
 
         # Prepare data for charts
         labels = [r["site_type"] for r in self.results if r.get("success")]
-        success_rates = [r["success_rate"] * 100 for r in self.results if r.get("success")]
+        download_completion_rates = [r["download_completion_rate"] * 100 for r in self.results if r.get("success")]
         durations = [r["duration_seconds"] for r in self.results if r.get("success")]
         sizes = [r["output_size_mb"] for r in self.results if r.get("success")]
 
@@ -332,8 +332,8 @@ class DemoBenchmark:
 
         <div class="summary-cards">
             <div class="card">
-                <h3>Average Success Rate</h3>
-                <div class="value">{sum(success_rates)/len(success_rates):.1f}%</div>
+                <h3>Average Download Completion</h3>
+                <div class="value">{sum(download_completion_rates)/len(download_completion_rates):.1f}%</div>
             </div>
             <div class="card">
                 <h3>Total Assets Downloaded</h3>
@@ -351,7 +351,7 @@ class DemoBenchmark:
 
         <div class="charts">
             <div class="chart-container">
-                <h3>📊 Success Rate by Site Type</h3>
+                <h3>📊 Download Completion by Site Type</h3>
                 <canvas id="successChart"></canvas>
             </div>
             <div class="chart-container">
@@ -374,7 +374,7 @@ class DemoBenchmark:
                 <tr>
                     <th>Site Type</th>
                     <th>URL</th>
-                    <th>Success Rate</th>
+                    <th>Download Completion</th>
                     <th>Duration</th>
                     <th>Assets</th>
                     <th>Size</th>
@@ -385,7 +385,7 @@ class DemoBenchmark:
                     f'''<tr>
                         <td><strong>{r["site_type"]}</strong></td>
                         <td>{r["url"]}</td>
-                        <td class="success">{r["success_rate"]*100:.1f}%</td>
+                        <td class="success">{r["download_completion_rate"]*100:.1f}%</td>
                         <td>{r["duration_seconds"]:.1f}s</td>
                         <td>{r["metrics"]["successful_downloads"]}/{r["metrics"]["total_resources"]}</td>
                         <td>{r["output_size_mb"]:.2f} MB</td>
@@ -410,14 +410,14 @@ class DemoBenchmark:
             }}
         }};
 
-        // Success Rate Chart
+        // Download Completion Chart
         new Chart(document.getElementById('successChart'), {{
             type: 'bar',
             data: {{
                 labels: {labels},
                 datasets: [{{
-                    label: 'Success Rate (%)',
-                    data: {success_rates},
+                    label: 'Download Completion (%)',
+                    data: {download_completion_rates},
                     backgroundColor: 'rgba(102, 126, 234, 0.8)',
                 }}]
             }},
@@ -480,14 +480,14 @@ class DemoBenchmark:
         print("\n" + "=" * 80)
         print("SUMMARY TABLE")
         print("=" * 80)
-        print(f"{'Site Type':<20} {'Success Rate':<15} {'Duration':<15} {'Assets':<15}")
+        print(f"{'Site Type':<20} {'Download Completion':<15} {'Duration':<15} {'Assets':<15}")
         print("-" * 80)
 
         for result in self.results:
             if result.get("success"):
                 print(
                     f"{result['site_type']:<20} "
-                    f"{result['success_rate']*100:>6.1f}%        "
+                    f"{result['download_completion_rate']*100:>6.1f}%        "
                     f"{result['duration_seconds']:>6.1f}s        "
                     f"{result['metrics']['successful_downloads']:>4}/{result['metrics']['total_resources']:<4}"
                 )
@@ -497,17 +497,17 @@ class DemoBenchmark:
         # Key insights
         print("\n💡 KEY INSIGHTS:")
 
-        success_rates = [r["success_rate"] for r in self.results if r.get("success")]
-        avg_success = sum(success_rates) / len(success_rates) * 100
+        download_completion_rates = [r["download_completion_rate"] for r in self.results if r.get("success")]
+        avg_success = sum(download_completion_rates) / len(download_completion_rates) * 100
 
         print(f"  • Average success rate: {avg_success:.1f}%")
 
         # Find best/worst
-        best = max(self.results, key=lambda x: x.get("success_rate", 0) if x.get("success") else 0)
-        worst = min(self.results, key=lambda x: x.get("success_rate", 1) if x.get("success") else 1)
+        best = max(self.results, key=lambda x: x.get("download_completion_rate", 0) if x.get("success") else 0)
+        worst = min(self.results, key=lambda x: x.get("download_completion_rate", 1) if x.get("success") else 1)
 
-        print(f"  • Best performance: {best['site_type']} ({best['success_rate']*100:.1f}%)")
-        print(f"  • Needs improvement: {worst['site_type']} ({worst['success_rate']*100:.1f}%)")
+        print(f"  • Best performance: {best['site_type']} ({best['download_completion_rate']*100:.1f}%)")
+        print(f"  • Needs improvement: {worst['site_type']} ({worst['download_completion_rate']*100:.1f}%)")
 
         print("\n")
 

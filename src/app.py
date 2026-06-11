@@ -21,7 +21,7 @@ def create_app():
     def index():
         """API information endpoint"""
         return jsonify({
-            "name": "WordPress Website Cloner API",
+            "name": "Website Cloner API",
             "version": "2.0.0",
             "endpoints": {
                 "clone_url": "/clone?url=<url>",

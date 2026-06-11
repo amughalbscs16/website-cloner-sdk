@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class ResourceDownloader:
     """Handles downloading of web resources"""
 
-    def __init__(self, file_manager: FileManager, network_urls: Set[str] = None, max_workers: int = 10, event_emitter: Optional['EventEmitter'] = None, cancel_check=None):
+    def __init__(self, file_manager: FileManager, network_urls: Set[str] = None, max_workers: int = 10, event_emitter: Optional['EventEmitter'] = None, cancel_check=None, captured_resources: Optional[Dict] = None):
         """
         Initialize resource downloader
 
@@ -29,11 +29,19 @@ class ResourceDownloader:
             max_workers: Number of parallel download threads (default: 10)
             event_emitter: Optional event emitter for progress updates
             cancel_check: Optional callable to check for cancellation
+            captured_resources: Optional dict url -> CapturedResource of bodies
+                already captured in-browser via CDP. These are used as the
+                primary source; HTTP re-fetch is the fallback.
         """
         self.file_manager = file_manager
         self.network_urls = network_urls or set()
+        self.captured_resources = captured_resources or {}
         self.http = urllib3.PoolManager()
         self.httpx_client = httpx.Client(timeout=30.0, follow_redirects=True)
+        # Shared session: connection pooling amortizes TLS handshakes, which
+        # dominate per-resource cost on slow or TLS-inspected connections
+        self.session = requests.Session()
+        self.session.headers.update({"User-Agent": config.USER_AGENT})
         self.max_workers = max_workers
         self.download_stats = {"success": 0, "failed": 0, "skipped": 0}
         self.successful_downloads = []  # List of successfully downloaded URLs
@@ -53,10 +61,9 @@ class ResourceDownloader:
             Response object or None
         """
         timeout = timeout or config.REQUEST_TIMEOUT
-        headers = {"User-Agent": config.USER_AGENT}
 
         try:
-            response = requests.get(url, headers=headers, timeout=timeout)
+            response = self.session.get(url, timeout=timeout)
             if response.status_code in (200, 201, 202, 203, 204, 206):
                 return response
             logger.debug(f"Requests failed with status {response.status_code}: {url}")
@@ -107,7 +114,7 @@ class ResourceDownloader:
 
     def download_resource(self, url: str, max_retries: int = 3) -> Tuple[Optional[bytes], Optional[str]]:
         """
-        Download a resource with automatic fallback and retry logic
+        Get a resource's bytes: CDP-captured body first, HTTP re-fetch as fallback
 
         Args:
             url: URL to download
@@ -116,7 +123,13 @@ class ResourceDownloader:
         Returns:
             Tuple of (Binary content or None, method name or None)
         """
-        # Try all three methods in order with retries
+        # Primary source: the body the browser actually received (CDP capture).
+        # Re-fetching can fail or return different bytes for session-gated URLs.
+        captured = self.captured_resources.get(url)
+        if captured is not None:
+            return captured.content, "cdp"
+
+        # Fallback: re-fetch over HTTP with all three methods in order with retries
         methods = [
             ("requests", self.download_with_requests, lambda r: r.content),
             ("urllib3", self.download_with_urllib, lambda r: r.data),
@@ -240,11 +253,6 @@ class ResourceDownloader:
             if not filename:
                 filename = "index.html"
 
-            # Check if should download based on network logs
-            if not self.should_download_from_network(filename, absolute_url):
-                logger.debug(f"Skipping (not in network logs): {absolute_url}")
-                return file_url
-
             # Generate unique filename
             file_path = self.file_manager.get_unique_filename(
                 save_directory, filename, config.ALLOWED_EXTENSIONS
@@ -305,9 +313,22 @@ class ResourceDownloader:
         except Exception as e:
             logger.warning(f"Could not download favicon: {e}")
 
+    @property
+    def capture_method_stats(self) -> Dict[str, int]:
+        """Count of successful downloads per acquisition method (cdp/requests/urllib3/httpx)"""
+        counts: Dict[str, int] = {}
+        for item in self.successful_downloads:
+            method = item.get("method") or "unknown"
+            counts[method] = counts.get(method, 0) + 1
+        return counts
+
     def close(self):
         """Close HTTP clients"""
         try:
             self.httpx_client.close()
+        except:
+            pass
+        try:
+            self.session.close()
         except:
             pass

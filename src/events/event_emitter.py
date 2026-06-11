@@ -17,6 +17,8 @@ class ClonerEvents(str, Enum):
     # Progress events
     PAGE_LOADED = "page_loaded"
     NETWORK_LOGS_EXTRACTED = "network_logs_extracted"
+    CDP_CAPTURE_COMPLETE = "cdp_capture_complete"
+    FRAMEWORK_DETECTED = "framework_detected"
     HTML_PROCESSING_START = "html_processing_start"
     HTML_PROCESSING_COMPLETE = "html_processing_complete"
     CSS_PROCESSING_START = "css_processing_start"
@@ -81,6 +83,13 @@ class ResourceData(EventData):
     file_category: Optional[str] = None
     size_bytes: Optional[int] = None
     error: Optional[str] = None
+
+
+@dataclass
+class FrameworkData(EventData):
+    """Data for framework detection event"""
+    frameworks: list = field(default_factory=list)  # list of dicts from FrameworkMatch.to_dict()
+    primary: Optional[str] = None  # highest-confidence framework name
 
 
 @dataclass

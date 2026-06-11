@@ -12,6 +12,11 @@ from datetime import datetime
 import csv
 
 
+def _completion_rate(result: Dict) -> float:
+    """Read download_completion_rate, falling back to the legacy success_rate key"""
+    return result.get('download_completion_rate', result.get('success_rate', 0))
+
+
 class ResultsStorage:
     """
     Centralized storage system for experiment results.
@@ -206,7 +211,7 @@ class ResultsStorage:
                     'count': len(results),
                     'successful': 0,
                     'avg_duration': 0,
-                    'avg_success_rate': 0,
+                    'avg_download_completion_rate': 0,
                     'total_size_mb': 0
                 }
 
@@ -214,7 +219,7 @@ class ResultsStorage:
                 'count': len(results),
                 'successful': len(successful),
                 'avg_duration': sum(r.get('duration_seconds', 0) for r in successful) / len(successful),
-                'avg_success_rate': sum(r.get('success_rate', 0) for r in successful) / len(successful),
+                'avg_download_completion_rate': sum(_completion_rate(r) for r in successful) / len(successful),
                 'total_size_mb': sum(r.get('output_size_mb', 0) for r in successful)
             }
 
@@ -234,7 +239,7 @@ class ResultsStorage:
             },
             'comparison': {
                 'duration_change': stats2['avg_duration'] - stats1['avg_duration'],
-                'success_rate_change': stats2['avg_success_rate'] - stats1['avg_success_rate'],
+                'download_completion_rate_change': stats2['avg_download_completion_rate'] - stats1['avg_download_completion_rate'],
                 'size_change_mb': stats2['total_size_mb'] - stats1['total_size_mb']
             }
         }
@@ -278,7 +283,7 @@ class ResultsStorage:
             'avg_resources_per_site': sum(r.get('total_resources', 0) for r in successful) / len(successful),
             'total_successful_downloads': sum(r.get('successful_downloads', 0) for r in successful),
             'total_failed_downloads': sum(r.get('failed_downloads', 0) for r in successful),
-            'avg_success_rate': sum(r.get('success_rate', 0) for r in successful) / len(successful),
+            'avg_download_completion_rate': sum(_completion_rate(r) for r in successful) / len(successful),
 
             # Size
             'total_size_mb': sum(r.get('output_size_mb', 0) for r in successful),
@@ -298,7 +303,7 @@ class ResultsStorage:
             stats['by_category'][cat] = {
                 'count': len(cat_results),
                 'avg_duration': sum(r.get('duration_seconds', 0) for r in cat_results) / len(cat_results),
-                'avg_success_rate': sum(r.get('success_rate', 0) for r in cat_results) / len(cat_results),
+                'avg_download_completion_rate': sum(_completion_rate(r) for r in cat_results) / len(cat_results),
             }
 
         return stats
@@ -330,7 +335,7 @@ class ResultsStorage:
         print(f"\n Resources:")
         print(f"   Total Downloads: {stats['total_successful_downloads']}")
         print(f"   Total Failed: {stats['total_failed_downloads']}")
-        print(f"   Average Success Rate: {stats['avg_success_rate']:.1f}%")
+        print(f"   Avg Download Completion: {stats['avg_download_completion_rate']:.1f}%")
 
         print(f"\n Output Size:")
         print(f"   Total: {stats['total_size_mb']:.2f} MB")
@@ -342,7 +347,7 @@ class ResultsStorage:
                 print(f"   {cat}:")
                 print(f"     Count: {cat_stats['count']}")
                 print(f"     Avg Duration: {cat_stats['avg_duration']:.1f}s")
-                print(f"     Avg Success: {cat_stats['avg_success_rate']:.1f}%")
+                print(f"     Avg Download Completion: {cat_stats['avg_download_completion_rate']:.1f}%")
 
         print(f"\n{'='*70}\n")
 

@@ -1,4 +1,4 @@
-"""Configuration management for WordPress Cloner"""
+"""Configuration management for Website Cloner"""
 
 import os
 from pathlib import Path
@@ -17,7 +17,11 @@ class Config:
     # Browser settings
     HEADLESS: bool = True
     BROWSER_TIMEOUT: int = 30
-    PAGE_LOAD_WAIT: int = 5
+    PAGE_LOAD_WAIT: int = 5          # Fallback fixed wait if idle detection fails
+    NETWORK_IDLE_MS: int = 1500      # Page is "idle" after this long with no new resources
+    PAGE_IDLE_TIMEOUT: int = 20      # Max seconds to wait for idle before proceeding
+    AUTO_SCROLL: bool = True         # Scroll through page to trigger lazy-loaded content
+    STATIC_SNAPSHOT: bool = True     # Remove scripts so re-hydration can't break the saved DOM
 
     # Download settings
     REQUEST_TIMEOUT: int = 7
@@ -26,6 +30,10 @@ class Config:
 
     # Bulk clone settings
     MAX_CONCURRENT_CLONES: int = 2  # Number of pages to clone in parallel
+
+    # Archive export settings
+    EXPORT_WARC: bool = True         # Write capture.warc.gz alongside the file tree
+    EXPORT_WACZ: bool = True         # Package WARC into capture.wacz (needs py-wacz)
 
     # Screenshot settings
     ENABLE_SCREENSHOTS: bool = True
@@ -66,6 +74,12 @@ class Config:
             HEADLESS=os.getenv("HEADLESS", "true").lower() == "true",
             BROWSER_TIMEOUT=int(os.getenv("BROWSER_TIMEOUT", "30")),
             PAGE_LOAD_WAIT=int(os.getenv("PAGE_LOAD_WAIT", "5")),
+            NETWORK_IDLE_MS=int(os.getenv("NETWORK_IDLE_MS", "1500")),
+            PAGE_IDLE_TIMEOUT=int(os.getenv("PAGE_IDLE_TIMEOUT", "20")),
+            AUTO_SCROLL=os.getenv("AUTO_SCROLL", "true").lower() == "true",
+            STATIC_SNAPSHOT=os.getenv("STATIC_SNAPSHOT", "true").lower() == "true",
+            EXPORT_WARC=os.getenv("EXPORT_WARC", "true").lower() == "true",
+            EXPORT_WACZ=os.getenv("EXPORT_WACZ", "true").lower() == "true",
             REQUEST_TIMEOUT=int(os.getenv("REQUEST_TIMEOUT", "7")),
             MAX_WORKERS=int(os.getenv("MAX_WORKERS", "10")),
             MAX_CONCURRENT_CLONES=int(os.getenv("MAX_CONCURRENT_CLONES", "3")),

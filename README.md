@@ -46,7 +46,7 @@ output = cloner.clone("https://example.com")
 
 ## 📸 Screenshots
 
-![WordPress Website Cloner Web UI](images/webui_screenshot.png)
+![Website Cloner Web UI](images/webui_screenshot.png)
 *Beautiful Web UI with real-time progress tracking and file type analytics*
 
 ---
@@ -54,11 +54,33 @@ output = cloner.clone("https://example.com")
 ## ✨ Features
 
 ### Core Functionality
+- ✅ **CDP Response Capture**: Saves the bytes the browser actually received via the
+  Chrome DevTools Protocol (the architecture used by Browsertrix Crawler), with HTTP
+  re-fetch only as a fallback for resources the browser never loaded
 - ✅ **JavaScript Execution**: Handles modern SPAs (React, Vue, Angular) using Selenium
-- ✅ **Complete Asset Download**: HTML, CSS, JavaScript, images, fonts, and all resources
-- ✅ **Network Monitoring**: Captures dynamically-loaded assets via Chrome DevTools
-- ✅ **Smart CSS Processing**: Extracts and downloads assets from `url()` declarations
+- ✅ **Network-Idle Detection + Auto-Scroll**: Waits until the page settles and scrolls
+  through it to trigger lazy-loaded content
+- ✅ **Full Markup Coverage**: img/srcset, `<picture>`/`<source>`, video/audio/poster,
+  lazy-load `data-src`, inline styles, `<style>` blocks, and CSS `url()` assets
+- ✅ **Standard Archive Output**: ISO 28500 WARC + WACZ (loads in ReplayWeb.page)
+  alongside the browsable file tree
 - ✅ **Auto ChromeDriver**: Automatically downloads and manages ChromeDriver - zero manual setup
+
+- ✅ **CSS-in-JS Capture**: Serializes runtime-injected styles (styled-components,
+  emotion, styled-jsx) that are invisible to plain HTML snapshots
+- ✅ **Framework Detection**: Identifies Next.js, Nuxt, SvelteKit, Astro, Gatsby,
+  Remix, Angular, Vue, React, WordPress, Shopify, and more (markup + JS globals)
+
+> **Viewing a clone:** serve it over HTTP — use the Web UI, or
+> `python serve_clone.py project/<folder>`. Opening `index.html` directly via
+> `file://` will look broken because browsers CORS-block fonts, ES modules, and
+> cross-origin stylesheets on `file://` pages; this is a browser restriction, not
+> missing files.
+
+> **Scope, honestly:** this is an embeddable single-page capture SDK for developers.
+> For institutional-scale, multi-page archival crawling, use
+> [Browsertrix Crawler](https://github.com/webrecorder/browsertrix-crawler) — this
+> project's niche is the importable library + event API, not crawl infrastructure.
 
 ### For Library Users (Developers)
 - 🐍 **Event-Driven SDK**: Subscribe to 14+ events for real-time updates
