@@ -10,6 +10,8 @@ import httpx
 from ..config import config
 from ..utils.logger import logger
 from ..utils.url_utils import URLUtils
+from ..events import ClonerEvents
+from ..events.event_emitter import ResourceData, StatsData
 from ..utils.file_utils import FileManager
 
 if TYPE_CHECKING:
@@ -231,6 +233,8 @@ class ResourceDownloader:
             self.download_stats["skipped"] += 1
             return self.file_manager.link_file[absolute_url]
 
+        self._emit(ClonerEvents.RESOURCE_DISCOVERED, ResourceData(url=absolute_url))
+
         try:
             # Download the resource
             content, method_name = self.download_resource(absolute_url)
@@ -241,6 +245,9 @@ class ResourceDownloader:
                     "url": absolute_url,
                     "reason": "All download methods failed"
                 })
+                self._emit(ClonerEvents.RESOURCE_DOWNLOAD_FAILED,
+                           ResourceData(url=absolute_url, error="All download methods failed"))
+                self._emit(ClonerEvents.STATS_UPDATE, self._stats_data())
                 return file_url
 
             # Create directory structure
@@ -275,6 +282,10 @@ class ResourceDownloader:
                 "method": method_name,
                 "size": len(content)
             })
+            self._emit(ClonerEvents.RESOURCE_DOWNLOAD_SUCCESS, ResourceData(
+                url=absolute_url, file_path=html_path,
+                file_type=(file_path.suffix.lstrip(".") or None), size_bytes=len(content)))
+            self._emit(ClonerEvents.STATS_UPDATE, self._stats_data())
             logger.info(f"Downloaded: {absolute_url} -> {html_path}")
             return html_path
 
@@ -284,8 +295,29 @@ class ResourceDownloader:
                 "url": absolute_url,
                 "reason": f"Exception: {str(e)}"
             })
+            self._emit(ClonerEvents.RESOURCE_DOWNLOAD_FAILED,
+                       ResourceData(url=absolute_url, error=str(e)))
+            self._emit(ClonerEvents.STATS_UPDATE, self._stats_data())
             logger.error(f"Error downloading {absolute_url}: {e}")
             return file_url
+
+    def _emit(self, event, data):
+        """Emit an event if an emitter is attached; never let it break a download."""
+        if not self.event_emitter:
+            return
+        try:
+            self.event_emitter.emit(event, data)
+        except Exception:
+            pass
+
+    def _stats_data(self) -> StatsData:
+        s = self.download_stats
+        return StatsData(
+            total_resources=s["success"] + s["failed"] + s["skipped"],
+            successful_downloads=s["success"],
+            failed_downloads=s["failed"],
+            skipped_downloads=s["skipped"],
+        )
 
     def download_favicon(self, base_url: str, project_path: Path) -> None:
         """

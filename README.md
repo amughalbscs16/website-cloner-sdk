@@ -203,16 +203,19 @@ This tool's misses are dominated by **images** (mostly `srcset` alternates and b
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd Wordpress-Detailed-Clone-Selenium-Python-Requests
+git clone https://github.com/amughalbscs16/website-cloner-sdk.git
+cd website-cloner-sdk
 
 # Create virtual environment (recommended)
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies, then the package itself (so `from src import ...` works from any directory)
 pip install -r requirements.txt
+pip install -e .
 ```
+
+> If you skip `pip install -e .`, run your SDK scripts from the project root so the `src` package is importable.
 
 ---
 
