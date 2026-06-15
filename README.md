@@ -47,7 +47,7 @@ output = cloner.clone("https://example.com")
 ## 📸 Screenshots
 
 ![Website Cloner Web UI](images/webui_screenshot.png)
-*Beautiful Web UI with real-time progress tracking and file type analytics*
+*Web UI: enter a URL, clone it in a real browser, and preview the captured copy rendered entirely from locally-saved assets.*
 
 ---
 
