@@ -609,6 +609,32 @@ See the `examples/` directory for complete examples:
 
 ---
 
+## 🧪 Testing
+
+The suite runs on every push via GitHub Actions (`.github/workflows/ci.yml`). Run it locally with:
+
+```bash
+pytest
+```
+
+**100 unit/integration tests** cover the pipeline:
+
+| Area | What it verifies | Tests |
+|---|---|--:|
+| CDP capture & settling | response-body capture, network-idle wait, auto-scroll, CSS-in-JS (CSSOM) inlining | 21 |
+| Resource acquisition | CDP-first download with `requests` → `urllib3` → `httpx` fallback + retries | 14 |
+| Parsing & rewriting | HTML asset rewriting, URL normalization | 16 |
+| Archival export | WARC 1.1 records, WACZ packaging | 4 |
+| Framework detection | markup + JS-global signatures, multi-label output | 12 |
+| Orchestration & events | `clone()` flow, typed event emitter | 13 |
+| File safety | filename sanitization, path handling | 4 |
+| Web API security | path-traversal rejection, app smoke test | 16 |
+| **Total** | | **100** |
+
+> These are unit/integration tests (the browser is mocked in most of them). Real-world capture fidelity is verified separately by **end-to-end clones on live sites** and the **50-site benchmark** above — not by the unit suite alone.
+
+---
+
 ## 🤝 Contributing
 
 Contributions welcome! Please:
