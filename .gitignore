@@ -93,3 +93,6 @@ paper/*.docx
 # Paper materials (kept local; not part of the software artifact)
 paper/
 experiments/COMPARISON.md
+
+# Tranco list cache
+.tranco/

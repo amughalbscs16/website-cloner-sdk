@@ -54,6 +54,32 @@ log_queues = {}  # Store log queues for each job
 cancel_flags = {}  # Store cancel flags for each job
 log_handler_ids = {}  # Store log handler IDs for each job to prevent duplicates
 active_cloners = {}  # Store active WebsiteCloner instances for cancellation
+_cloners_lock = threading.Lock()  # guards active_cloners across event-loop + worker threads
+
+
+def _safe_project_dir(project_name: str) -> Path:
+    """Resolve a project directory under PROJECT_DIR, rejecting path traversal."""
+    base = config.PROJECT_DIR.resolve()
+    if (not project_name or project_name in ('.', '..')
+            or '/' in project_name or '\\' in project_name or '\x00' in project_name):
+        raise HTTPException(status_code=400, detail="Invalid project name")
+    target = (base / project_name).resolve()
+    if target != base and base not in target.parents:
+        raise HTTPException(status_code=400, detail="Invalid project name")
+    return target
+
+
+def _safe_subpath(project_dir: Path, sub: str) -> Path:
+    """Resolve a sub-path under project_dir, rejecting path traversal."""
+    base = project_dir.resolve()
+    if not sub:
+        return base
+    if '\x00' in sub:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    target = (base / sub).resolve()
+    if target != base and base not in target.parents:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    return target
 
 
 class QueueLogHandler:
@@ -106,7 +132,6 @@ def clone_with_logging(url: str, headless: bool, job_id: str, parent_job_id: str
                 # Also forward to parent queue if available
                 if parent_q:
                     parent_q.put_nowait(msg_text)
-                print(f"[LOG SINK] Captured: {msg_text[:80]}")  # Debug output
         except Exception as e:
             # If extraction fails, try to get the raw message
             try:
@@ -116,20 +141,22 @@ def clone_with_logging(url: str, headless: bool, job_id: str, parent_job_id: str
             except:
                 pass
 
-    print(f"[DEBUG] Adding log handler for job {job_id}")
+    _worker_tid = threading.get_ident()
     handler_id = logger.add(
         log_sink,
         level="INFO",  # Only capture INFO and above (excludes DEBUG messages)
         format="{message}",
-        filter=None,  # Accept all modules
-        enqueue=False  # Don't enqueue to avoid threading issues
+        # Capture only logs from THIS job's worker thread so concurrent jobs do
+        # not cross-contaminate each other's log streams.
+        filter=lambda r: r["thread"].id == _worker_tid,
+        enqueue=False,
     )
     log_handler_ids[job_id] = handler_id  # Store handler ID
-    print(f"[DEBUG] Log handler added with ID: {handler_id}")
 
     # Create cloner instance with cancellation support
     cloner = WebsiteCloner(headless=headless)
-    active_cloners[job_id] = cloner
+    with _cloners_lock:
+        active_cloners[job_id] = cloner
 
     try:
         log_q.put_nowait("Starting clone process...")
@@ -160,8 +187,8 @@ def clone_with_logging(url: str, headless: bool, job_id: str, parent_job_id: str
         raise
     finally:
         # Cleanup
-        if job_id in active_cloners:
-            del active_cloners[job_id]
+        with _cloners_lock:
+            active_cloners.pop(job_id, None)
         logger.remove(handler_id)
         if job_id in log_handler_ids and log_handler_ids[job_id] == handler_id:
             del log_handler_ids[job_id]
@@ -352,7 +379,7 @@ def create_app() -> FastAPI:
     async def delete_project(project_name: str):
         """Delete a cloned project"""
         try:
-            project_path = config.PROJECT_DIR / project_name
+            project_path = _safe_project_dir(project_name)
             if not project_path.exists():
                 raise HTTPException(status_code=404, detail="Project not found")
 
@@ -363,6 +390,8 @@ def create_app() -> FastAPI:
             logger.info(f"Deleted project: {project_name}")
             return {"status": "success", "message": "Project deleted"}
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error deleting project: {e}")
             raise HTTPException(status_code=500, detail=str(e))
@@ -478,8 +507,9 @@ def create_app() -> FastAPI:
         cancel_flags[job_id] = True
 
         # Cancel the active cloner if it exists
-        if job_id in active_cloners:
-            cloner = active_cloners[job_id]
+        with _cloners_lock:
+            cloner = active_cloners.get(job_id)
+        if cloner is not None:
             cloner.cancel()
             logger.info(f"Requested cancellation for cloner: {job_id}")
 
@@ -501,7 +531,7 @@ def create_app() -> FastAPI:
     @app.get("/browse/{project_name}")
     async def browse_files(request: Request, project_name: str):
         """File browser page for a project"""
-        project_path = config.PROJECT_DIR / project_name
+        project_path = _safe_project_dir(project_name)
         if not project_path.exists():
             raise HTTPException(status_code=404, detail="Project not found")
 
@@ -514,7 +544,7 @@ def create_app() -> FastAPI:
     @app.get("/screenshots/{project_name}")
     async def view_screenshots(request: Request, project_name: str):
         """Screenshot gallery page for a project"""
-        project_path = config.PROJECT_DIR / project_name
+        project_path = _safe_project_dir(project_name)
         if not project_path.exists():
             raise HTTPException(status_code=404, detail="Project not found")
 
@@ -528,12 +558,12 @@ def create_app() -> FastAPI:
     async def list_files(project_name: str, path: str = ""):
         """List files in a project directory"""
         try:
-            project_path = config.PROJECT_DIR / project_name
+            project_path = _safe_project_dir(project_name)
             if not project_path.exists():
                 raise HTTPException(status_code=404, detail="Project not found")
 
-            # Get the directory to list
-            target_path = project_path / path if path else project_path
+            # Get the directory to list (path validated against traversal)
+            target_path = _safe_subpath(project_path, path)
             if not target_path.exists() or not target_path.is_dir():
                 raise HTTPException(status_code=404, detail="Directory not found")
 
@@ -555,6 +585,8 @@ def create_app() -> FastAPI:
                 "project_name": project_name
             }
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error listing files: {e}")
             raise HTTPException(status_code=500, detail=str(e))
@@ -566,17 +598,19 @@ def create_app() -> FastAPI:
             url = str(request.url)
             logger.info(f"Analyzing site: {url}")
 
-            # Create analyzer
+            # Create analyzer (closed in finally so its HTTP sessions are released)
             analyzer = SiteAnalyzer(timeout=10)
-
-            # Run analysis in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            analysis = await loop.run_in_executor(
-                None,
-                analyzer.analyze,
-                url,
-                True  # discover_pages
-            )
+            try:
+                # Run analysis in thread pool to avoid blocking
+                loop = asyncio.get_event_loop()
+                analysis = await loop.run_in_executor(
+                    None,
+                    analyzer.analyze,
+                    url,
+                    True  # discover_pages
+                )
+            finally:
+                analyzer.close()
 
             logger.success(f"Analysis complete for {url}")
             return analysis
@@ -813,7 +847,7 @@ def create_app() -> FastAPI:
     async def get_manifest(project_name: str):
         """Get download manifest for a project"""
         try:
-            project_path = config.PROJECT_DIR / project_name
+            project_path = _safe_project_dir(project_name)
             if not project_path.exists():
                 raise HTTPException(status_code=404, detail="Project not found")
 
@@ -825,13 +859,17 @@ def create_app() -> FastAPI:
                 }
 
             with open(manifest_path, 'r', encoding='utf-8') as f:
-                manifest_data = json.load(f)
+                # Map any non-standard NaN/Infinity constants to null so the
+                # response is valid JSON for browser clients.
+                manifest_data = json.load(f, parse_constant=lambda _c: None)
 
             return {
                 "exists": True,
                 "manifest": manifest_data
             }
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error loading manifest: {e}")
             raise HTTPException(status_code=500, detail=str(e))

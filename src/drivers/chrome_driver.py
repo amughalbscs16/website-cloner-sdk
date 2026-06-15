@@ -228,6 +228,24 @@ class ChromeDriverManager:
             for (const rule of Array.from(rules)) css += rule.cssText + '\n';
             if (css) { node.textContent = css; filled++; }
         }
+        // Recover constructable/adopted stylesheets (e.g. Lit, styled-components v6):
+        // these are not in document.styleSheets and have no <style> ownerNode.
+        try {
+            let adoptedCss = '';
+            for (const sheet of Array.from(document.adoptedStyleSheets || [])) {
+                let arules;
+                try { arules = sheet.cssRules; } catch (e) { continue; }
+                if (!arules) continue;
+                for (const rule of Array.from(arules)) adoptedCss += rule.cssText + '\n';
+            }
+            if (adoptedCss) {
+                const el = document.createElement('style');
+                el.setAttribute('data-adopted-stylesheet', 'true');
+                el.textContent = adoptedCss;
+                (document.head || document.documentElement).appendChild(el);
+                filled++;
+            }
+        } catch (e) {}
         return filled;
         """
         try:

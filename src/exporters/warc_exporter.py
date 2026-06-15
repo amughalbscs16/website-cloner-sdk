@@ -56,7 +56,7 @@ class WarcExporter:
 
         try:
             with open(warc_path, "wb") as stream:
-                writer = WARCWriter(stream, gzip=True)
+                writer = WARCWriter(stream, gzip=True, warc_version="WARC/1.1")
 
                 info = writer.create_warcinfo_record(filename, {
                     "software": self.software,

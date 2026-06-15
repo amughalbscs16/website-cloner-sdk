@@ -100,6 +100,24 @@ output = cloner.clone("https://example.com")
 
 ---
 
+## 📊 Benchmark & Evaluation
+
+Capture fidelity was measured on a **50-site corpus** (20 purposive, technology-stratified sites + 30 randomly sampled from the Tranco list), reporting **recall against [Browsertrix Crawler](https://github.com/webrecorder/browsertrix-crawler)** used as a high-fidelity browser-capture reference. Each baseline was given a fair single-page configuration (e.g. `wget -p -H --compression=auto`).
+
+| Tool | URL recall | Content-hash recall |
+|---|---|---|
+| **This tool** | **84.7 %** | **81.2 %** |
+| `wget` | 41.1 % | 38.0 % |
+| HTTrack | 23.5 % | 22.6 % |
+
+*Resource-weighted over 6,982 reference resources. The Browsertrix oracle is the 100 % reference, not a result of this tool. Two metrics are reported: URL-set overlap and a URL-independent content-hash overlap (the gap holds under both).*
+
+- The advantage is **concentrated on JavaScript-dependent pages** (single-page apps, hybrid, and lazy-loaded media), where non-executing crawlers miss script-loaded resources; on static/server-rendered pages the gap is small.
+- **CSS-in-JS recovery:** run-time-injected stylesheets are serialised back into the saved page, recovering styling that DOM-serialising tools silently drop (≈107 KB on the styled-components homepage) — a fidelity loss invisible to resource-count checks.
+- This tool is a **lightweight, embeddable complement** to institutional crawl infrastructure (Browsertrix, Heritrix), not a replacement; it does not match their crawl scale.
+
+---
+
 ## 📋 Requirements
 
 - **Python 3.10+**

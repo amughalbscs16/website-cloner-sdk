@@ -90,6 +90,9 @@ class FileManager:
         if len(parts) > 2:
             for folder in parts[1:-1]:
                 folder = self.sanitize_filename(folder)
+                # Never let path-traversal/empty segments escape the project dir
+                if folder in ('', '.', '..'):
+                    folder = '_'
                 save_directory = save_directory / folder
                 try:
                     save_directory.mkdir(exist_ok=True, parents=True)
@@ -97,6 +100,17 @@ class FileManager:
                     logger.warning(f"Could not create directory {save_directory}: {e}")
                     continue
                 html_directory = os.path.join(html_directory, folder)
+
+        # Containment guard: if the resolved directory still escaped project_path,
+        # fall back to the project root rather than writing outside it.
+        try:
+            base = project_path.resolve()
+            target = save_directory.resolve()
+            if target != base and base not in target.parents:
+                logger.warning(f"Blocked path escape for {file_url!r}; writing to project root")
+                return project_path, ""
+        except Exception:
+            return project_path, ""
 
         return save_directory, html_directory
 

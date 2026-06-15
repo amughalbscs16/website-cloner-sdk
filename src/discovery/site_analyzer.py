@@ -14,6 +14,22 @@ class SiteAnalyzer:
         self.detector = WordPressDetector(timeout=timeout)
         self.parser = SitemapParser(timeout=timeout)
 
+    def close(self):
+        """Release the HTTP sessions held by the detector and parser."""
+        for component in (self.detector, self.parser):
+            session = getattr(component, "session", None)
+            if session is not None:
+                try:
+                    session.close()
+                except Exception:
+                    pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
     def analyze(self, url: str, discover_pages: bool = True, fetch_titles: bool = False) -> Dict:
         """
         Perform complete site analysis
