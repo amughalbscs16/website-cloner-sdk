@@ -116,6 +116,77 @@ Capture fidelity was measured on a **50-site corpus** (20 purposive, technology-
 - **CSS-in-JS recovery:** run-time-injected stylesheets are serialised back into the saved page, recovering styling that DOM-serialising tools silently drop (≈107 KB on the styled-components homepage) — a fidelity loss invisible to resource-count checks.
 - This tool is a **lightweight, embeddable complement** to institutional crawl infrastructure (Browsertrix, Heritrix), not a replacement; it does not match their crawl scale.
 
+### What each tool misses (by file type)
+
+Number of the oracle's resources each tool **failed to capture**, by media type, summed over all 50 sites:
+
+| Tool | Total missed | Images | Scripts | CSS | HTML | Fonts | Media | JSON | Other |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| **This tool** | 1,074 | 586 | 73 | 20 | 95 | 8 | 75 | 65 | 152 |
+| `wget` | 4,123 | 1,767 | 902 | 164 | 179 | 30 | 87 | 166 | 828 |
+| HTTrack | 5,364 | 2,516 | 1,204 | 199 | 196 | 128 | 95 | 166 | 860 |
+
+This tool's misses are dominated by **images** (mostly `srcset` alternates and below-the-fold lazy media not loaded on the captured view). The non-executing crawlers additionally miss large numbers of **scripts** and script-loaded resources, which they cannot discover without executing JavaScript.
+
+<details>
+<summary><b>Per-site results — all 50 sites tested</b> (20 purposive, technology-stratified + 30 random Tranco). Recall = % of the Browsertrix oracle's resources captured.</summary>
+
+| Site | Tier | Oracle resources | This tool | `wget` | HTTrack |
+|---|---|--:|--:|--:|--:|
+| Example.com | Static | 1 | 100.0% | 100.0% | 100.0% |
+| Motherfucking Website | Static | 6 | 66.7% | 16.7% | 16.7% |
+| Python Docs | Static | 21 | 95.2% | 90.5% | 33.3% |
+| Django Project | Server-rendered | 15 | 100.0% | 93.3% | 26.7% |
+| Ruby on Rails | Server-rendered | 41 | 100.0% | 95.1% | 61.0% |
+| Wikipedia Article | Server-rendered | 42 | 83.3% | 38.1% | 16.7% |
+| WordPress.org News | Server-rendered | 62 | 82.3% | 79.0% | 21.0% |
+| Angular.io | SPA | 70 | 95.7% | 24.3% | 1.4% |
+| React.dev | SPA | 77 | 100.0% | 85.7% | 63.6% |
+| Vue.js | SPA | 78 | 97.4% | 7.7% | 17.9% |
+| Next.js | Hybrid | 121 | 91.7% | 65.3% | 32.2% |
+| Nuxt | Hybrid | 158 | 90.5% | 32.9% | 40.5% |
+| Remix | Hybrid | 141 | 99.3% | 5.7% | 34.0% |
+| Figma Blog | JS-heavy | 242 | 62.8% | 51.7% | 7.4% |
+| Linear Features | JS-heavy | 141 | 95.0% | 66.0% | 34.0% |
+| Notion Features | JS-heavy | 224 | 71.9% | 63.4% | 0.4% |
+| Google Fonts | Special | 158 | 97.5% | 3.2% | 1.3% |
+| MDN Web Docs | Special | 74 | 100.0% | 63.5% | 35.1% |
+| Tailwind CSS | Special | 116 | 97.4% | 73.3% | 48.3% |
+| Unsplash | Special | 480 | 85.8% | 0.2% | 0.2% |
+| anyflip.com | Random | 147 | 74.8% | 43.5% | 23.8% |
+| bestecasinosechtgeld.com | Random | 33 | 90.9% | 72.7% | 36.4% |
+| bijou-brigitte.com | Random | 663 | 97.1% | 0.2% | 0.2% |
+| bonappetit.com | Random | 448 | 32.1% | 16.7% | 10.5% |
+| bonzai.co | Random | 68 | 100.0% | 73.5% | 0.0% |
+| brandenburg.de | Random | 37 | 100.0% | 91.9% | 62.2% |
+| cdon.se | Random | 398 | 97.7% | 84.4% | 32.2% |
+| clicktripz.com | Random | 93 | 82.8% | 65.6% | 0.0% |
+| crn.com | Random | 177 | 84.2% | 2.3% | 1.1% |
+| eftps.gov | Random | 15 | 100.0% | 100.0% | 73.3% |
+| ekir.de | Random | 120 | 32.5% | 25.8% | 0.8% |
+| euronext.com | Random | 217 | 99.1% | 89.4% | 40.6% |
+| gold.de | Random | 105 | 95.2% | 38.1% | 19.0% |
+| impel.io | Random | 207 | 88.9% | 51.7% | 41.1% |
+| lifehacker.ru | Random | 385 | 93.8% | 16.1% | 37.4% |
+| lnwshop.com | Random | 194 | 76.8% | 69.1% | 55.7% |
+| meme-arsenal.com | Random | 36 | 97.2% | 69.4% | 36.1% |
+| mim.gov.it | Random | 94 | 96.8% | 89.4% | 51.1% |
+| mrqz.me | Random | 18 | 100.0% | 33.3% | 5.6% |
+| pathosting.com | Random | 124 | 100.0% | 35.5% | 57.3% |
+| pestpac.com | Random | 190 | 85.3% | 60.5% | 48.9% |
+| propeciaa.sbs | Random | 16 | 87.5% | 81.2% | 50.0% |
+| public.express | Random | 266 | 91.0% | 41.7% | 34.6% |
+| rae.es | Random | 61 | 96.7% | 45.9% | 1.6% |
+| startquestion.com | Random | 168 | 95.8% | 80.4% | 46.4% |
+| tekta.ru | Random | 72 | 37.5% | 26.4% | 11.1% |
+| tradesoft.ru | Random | 120 | 77.5% | 53.3% | 30.8% |
+| unimed.ac.id | Random | 51 | 98.0% | 96.1% | 54.9% |
+| wcupa.edu | Random | 120 | 64.2% | 47.5% | 25.0% |
+| zt.ru | Random | 71 | 97.2% | 33.8% | 8.5% |
+| **Overall (50)** | | **6,982** | **84.7%** | **41.1%** | **23.5%** |
+
+</details>
+
 ---
 
 ## 📋 Requirements
